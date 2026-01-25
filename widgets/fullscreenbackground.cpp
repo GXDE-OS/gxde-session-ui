@@ -132,6 +132,9 @@ void FullscreenBackground::paintEvent(QPaintEvent *e)
 
     const QRect trueRect(QPoint(0, 0), QSize(size() * devicePixelRatioF()));
 
+    // 绘制纯黑背景，避免出现壁纸设置错误导致控件与白色背景融为一体的问题
+    painter.fillRect(trueRect, QColor(0, 0, 0));
+
     if (!m_background.isNull()) {
         // tr is need redraw rect, sourceRect need correct upper left corner
         painter.drawPixmap(trueRect,

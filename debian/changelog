@@ -1,12 +1,13 @@
-gxde-session-ui (5.0.3) UNRELEASED; urgency=medium
+gxde-session-ui (5.0.4) UNRELEASED; urgency=medium
 
   * Change text
   * 消息提示显示至右下角
   * dde-session-ui 改名为 gxde-session-ui
   * 将 deepin-desktop-schemas 修改为 gxde-desktop-schemas
   * 调整 Conflicts 版本号
+  * 修复关机、登录页面设置异常壁纸后控件与背景融为一体无法分辨的问题
 
- -- gfdgd_xi <3025613752@qq.com>  Thu, 12 Jun 2025 22:49:45 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Sun, 25 Jan 2026 10:53:47 +0800
 
 gxde-session-ui (4.9.14-1+comsta) unstable; urgency=low
 
