@@ -674,7 +674,7 @@ void ContentWidget::recoveryLayout()
 
 void ContentWidget::runSystemMonitor()
 {
-    QProcess::startDetached("/usr/bin/deepin-system-monitor");
+    QProcess::startDetached("/bin/bash -c \"env QT_QPA_PLATFORMTHEME=deepin 'QT_QPA_PLATFORM=dxcb;xcb;dwayland;wayland' deepin-system-monitor\"");
 
     if (m_systemMonitor) {
         m_systemMonitor->clearFocus();
