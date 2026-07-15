@@ -39,8 +39,10 @@
 FullscreenBackground::FullscreenBackground(QWidget *parent)
     : QWidget(parent)
     , m_fadeOutAni(new QVariantAnimation(this))
-{
-    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint);
+{   
+    // 修复在 wlcom 下 dde-shutdown 有标题栏的问题
+    // setWindowFlags(Qt::WindowStaysOnTopHint | Qt::X11BypassWindowManagerHint);
+    setWindowFlags(Qt::WindowStaysOnTopHint | Qt::FramelessWindowHint | Qt::BypassWindowManagerHint);
 
     m_fadeOutAni->setEasingCurve(QEasingCurve::InOutCubic);
     m_fadeOutAni->setDuration(1000);
