@@ -41,6 +41,9 @@ DWIDGET_USE_NAMESPACE
 
 int main(int argc, char *argv[])
 {
+    Q_INIT_RESOURCE(widgetsimages);
+    Q_INIT_RESOURCE(widgetstheme);
+
     DApplication::loadDXcbPlugin();
     DApplication a(argc, argv);
     a.setApplicationName("deepin-wm-chooser");

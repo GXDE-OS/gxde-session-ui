@@ -1,0 +1,80 @@
+find_package(PkgConfig REQUIRED)
+find_package(Qt5 REQUIRED COMPONENTS Widgets DBus)
+find_package(Dtk REQUIRED COMPONENTS Core)
+
+find_program(QDBUSXML2CPP qdbusxml2cpp)
+
+pkg_check_modules(DAUTH REQUIRED dframeworkdbus)
+
+set(DBUS_XML_DIR ${CMAKE_CURRENT_SOURCE_DIR}/dbus)
+
+set(AUTH_ADAPTOR_XML ${DBUS_XML_DIR}/com.deepin.daemon.authority.Agent.xml)
+set(AUTH_INTERFACE_XML ${DBUS_XML_DIR}/com.deepin.daemon.Authority.xml)
+set(AUTH_TRANSACTION_XML ${DBUS_XML_DIR}/com.deepin.daemon.authority.Transaction.xml)
+
+set(AUTH_ADAPTOR_HEADER ${CMAKE_CURRENT_BINARY_DIR}/agent_adaptor.h)
+set(AUTH_ADAPTOR_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/agent_adaptor.cpp)
+set(AUTH_INTERFACE_HEADER ${CMAKE_CURRENT_BINARY_DIR}/authority_interface.h)
+set(AUTH_INTERFACE_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/authority_interface.cpp)
+set(AUTH_TRANSACTION_HEADER ${CMAKE_CURRENT_BINARY_DIR}/transaction_interface.h)
+set(AUTH_TRANSACTION_SOURCE ${CMAKE_CURRENT_BINARY_DIR}/transaction_interface.cpp)
+
+add_custom_command(
+    OUTPUT ${AUTH_ADAPTOR_HEADER}
+    COMMAND ${QDBUSXML2CPP} -a ${AUTH_ADAPTOR_HEADER}: ${AUTH_ADAPTOR_XML}
+    DEPENDS ${AUTH_ADAPTOR_XML}
+)
+add_custom_command(
+    OUTPUT ${AUTH_ADAPTOR_SOURCE}
+    COMMAND ${QDBUSXML2CPP} -i ${AUTH_ADAPTOR_HEADER} -a :${AUTH_ADAPTOR_SOURCE} ${AUTH_ADAPTOR_XML}
+    DEPENDS ${AUTH_ADAPTOR_XML} ${AUTH_ADAPTOR_HEADER}
+)
+
+add_custom_command(
+    OUTPUT ${AUTH_INTERFACE_HEADER}
+    COMMAND ${QDBUSXML2CPP} -p ${AUTH_INTERFACE_HEADER}: ${AUTH_INTERFACE_XML}
+    DEPENDS ${AUTH_INTERFACE_XML}
+)
+add_custom_command(
+    OUTPUT ${AUTH_INTERFACE_SOURCE}
+    COMMAND ${QDBUSXML2CPP} -i ${AUTH_INTERFACE_HEADER} -p :${AUTH_INTERFACE_SOURCE} ${AUTH_INTERFACE_XML}
+    DEPENDS ${AUTH_INTERFACE_XML} ${AUTH_INTERFACE_HEADER}
+)
+
+add_custom_command(
+    OUTPUT ${AUTH_TRANSACTION_HEADER}
+    COMMAND ${QDBUSXML2CPP} -N -p ${AUTH_TRANSACTION_HEADER}: ${AUTH_TRANSACTION_XML}
+    DEPENDS ${AUTH_TRANSACTION_XML}
+)
+add_custom_command(
+    OUTPUT ${AUTH_TRANSACTION_SOURCE}
+    COMMAND ${QDBUSXML2CPP} -N -i ${AUTH_TRANSACTION_HEADER} -p :${AUTH_TRANSACTION_SOURCE} ${AUTH_TRANSACTION_XML}
+    DEPENDS ${AUTH_TRANSACTION_XML} ${AUTH_TRANSACTION_HEADER}
+)
+
+add_library(dde-auth STATIC
+    authagent.cpp
+    deepinauthframework.cpp
+    ${AUTH_ADAPTOR_HEADER}
+    ${AUTH_ADAPTOR_SOURCE}
+    ${AUTH_INTERFACE_HEADER}
+    ${AUTH_INTERFACE_SOURCE}
+    ${AUTH_TRANSACTION_HEADER}
+    ${AUTH_TRANSACTION_SOURCE}
+)
+
+target_include_directories(dde-auth PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/interface
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${CMAKE_SOURCE_DIR}/session-widgets
+    ${CMAKE_SOURCE_DIR}/global_util
+)
+
+target_link_libraries(dde-auth PUBLIC
+    ${Qt5Widgets_LIBRARIES}
+    ${Qt5DBus_LIBRARIES}
+    ${DtkCore_LIBRARIES}
+    ${DAUTH_LIBRARIES}
+)
+target_include_directories(dde-auth PUBLIC ${DtkCore_INCLUDE_DIRS} ${DAUTH_INCLUDE_DIRS})

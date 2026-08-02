@@ -189,6 +189,9 @@ int main(int argc, char* argv[])
     }
 
     DApplication::loadDXcbPlugin();
+    Q_INIT_RESOURCE(widgetsimages);
+    Q_INIT_RESOURCE(widgetstheme);
+
     DApplication a(argc, argv);
     qApp->setOrganizationName("deepin");
     qApp->setApplicationName("lightdm-deepin-greeter");

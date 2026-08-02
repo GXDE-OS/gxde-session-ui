@@ -49,6 +49,9 @@ DWIDGET_USE_NAMESPACE
 
 int main(int argc, char* argv[])
 {
+    Q_INIT_RESOURCE(widgetsimages);
+    Q_INIT_RESOURCE(widgetstheme);
+
     DApplication app(argc, argv);
     app.setOrganizationName("deepin");
     app.setApplicationName("dde-shutdown");
