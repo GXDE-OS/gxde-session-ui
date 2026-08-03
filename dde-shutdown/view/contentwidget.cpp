@@ -54,7 +54,7 @@ ContentWidget::ContentWidget(QWidget *parent)
     , m_blurImageInter(new ImageBlur("com.deepin.daemon.Accounts",
                                      "/com/deepin/daemon/ImageBlur",
                                      QDBusConnection::systemBus(), this))
-
+    , m_gsettings(new QGSettings("com.deepin.dde.appearance", "", this))
 {
     initUI();
     initData();
@@ -597,15 +597,39 @@ void ContentWidget::initUI() {
 
 void ContentWidget::initBackground()
 {
-    if (m_wmInter->isValid()) {
-        currentWorkspaceChanged();
-    }
-    else {
+    // 首先尝试从 gsettings 读取壁纸
+    QString path = m_gsettings->get("background-uris").toStringList().first();
+
+    // 检查 gsettings 是否有有效的本地路径
+    if (!path.isEmpty() && (path.startsWith("/") || path.startsWith("file:"))) {
         QTimer::singleShot(0, this, [=] {
-            updateWallpaper(m_dbusAppearance->background());
+            updateWallpaper(path);
         });
+    } else {
+        // gsettings 没有有效路径，使用原有的 dbus 获取逻辑
+        if (m_wmInter->isValid()) {
+            currentWorkspaceChanged();
+        }
+        else {
+            QTimer::singleShot(0, this, [=] {
+                updateWallpaper(m_dbusAppearance->background());
+            });
+        }
     }
 
+    // 监听 gsettings 变化
+    connect(m_gsettings, &QGSettings::changed, this, [=](const QString &key) {
+        if (key == "background-uris") {
+            QString newPath = m_gsettings->get("background-uris").toStringList().first();
+            if (!newPath.isEmpty() && (newPath.startsWith("/") || newPath.startsWith("file:"))) {
+                QTimer::singleShot(0, this, [=] {
+                    updateWallpaper(newPath);
+                });
+            }
+        }
+    });
+
+    // 监听 dbus 的 background 变化
     connect(m_dbusAppearance, &Appearance::Changed, this, [=](const QString &type, const QString &path){
         if (type == "background") {
             updateWallpaper(path.split(";").first());
