@@ -5,6 +5,8 @@ set -e
 if [ "$1" = "configure" ];then
 	update-alternatives --install /usr/share/xgreeters/lightdm-greeter.desktop \
 	lightdm-greeter /usr/share/xgreeters/lightdm-deepin-greeter.desktop 90
+	systemctl daemon-reload | true
+	systemctl restart accounts-daemon.service | true
 fi
 
 #DEBHELPER#

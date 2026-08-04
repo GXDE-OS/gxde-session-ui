@@ -1,4 +1,4 @@
-gxde-session-ui (5.0.6) UNRELEASED; urgency=medium
+gxde-session-ui (5.0.7) UNRELEASED; urgency=medium
 
   * Change text
   * 消息提示显示至右下角
@@ -8,8 +8,10 @@ gxde-session-ui (5.0.6) UNRELEASED; urgency=medium
   * 修复关机、登录页面设置异常壁纸后控件与背景融为一体无法分辨的问题
   * 修复关机页面启动资源监视器时 UI 异常的问题
   * 修复在 wlcom 下 dde-shutdown 有标题栏的问题
+  * 修复 dde-shutdown 壁纸问题
+  * 修复无法记忆最后一次 session 问题
 
- -- gfdgd_xi <3025613752@qq.com>  Fri, 17 Jul 2026 18:30:51 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Tue, 04 Aug 2026 12:13:17 +0800
 
 gxde-session-ui (4.9.14-1+comsta) unstable; urgency=low
 
