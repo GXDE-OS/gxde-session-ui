@@ -28,6 +28,8 @@
 #include <DApplication>
 #include <QFile>
 #include <QDBusConnection>
+#include <QDBusMetaType>
+#include <QMap>
 #include <QProcess>
 #include <DDBusSender>
 #include <DLog>
@@ -45,6 +47,12 @@ DCORE_USE_NAMESPACE
 
 int main(int argc, char *argv[])
 {
+    // Register D-Bus meta types that are not built into QtDBus. Without this,
+    // calls such as org.freedesktop.DBus.UpdateActivationEnvironment (which use
+    // a{ss}) abort the application on X11 with
+    // "type QMap<QString,QString> is not registered with QtDBus".
+    qDBusRegisterMetaType<QMap<QString, QString>>();
+
     if (QString(getenv("XDG_CURRENT_DESKTOP")) != QStringLiteral("Deepin")) {
         qDebug() << "I only run the Deepin Desktop!";
         return -1;
