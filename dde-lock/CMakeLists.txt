@@ -13,6 +13,8 @@ add_executable(dde-lock
     dbus/dbuslockagent.cpp
     images.qrc
     logintheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetstheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetsimages.qrc
 )
 
 target_link_libraries(dde-lock PRIVATE

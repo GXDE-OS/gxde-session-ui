@@ -11,6 +11,8 @@ add_executable(lightdm-deepin-greeter
     loginwindow.cpp
     image.qrc
     logintheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetstheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetsimages.qrc
 )
 
 target_link_libraries(lightdm-deepin-greeter PRIVATE
@@ -43,4 +45,7 @@ install(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/deepin-greeter
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/scripts/
     DESTINATION /etc/deepin/greeters.d
     FILES_MATCHING PATTERN "*"
+)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/accounts-daemon.service.d/override.conf
+    DESTINATION /etc/systemd/system/accounts-daemon.service.d
 )

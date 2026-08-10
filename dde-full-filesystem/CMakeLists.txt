@@ -8,6 +8,8 @@ add_executable(dde-full-filesystem
     fullfilesystem.cpp
     fullfilesystemframe.cpp
     resources.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetstheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetsimages.qrc
 )
 
 target_link_libraries(dde-full-filesystem PRIVATE

@@ -9,6 +9,8 @@ add_executable(dde-welcome
     mainwidget.cpp
     utils.cpp
     resources.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetstheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetsimages.qrc
 )
 
 target_link_libraries(dde-welcome PRIVATE

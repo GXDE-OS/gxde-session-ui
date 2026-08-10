@@ -17,6 +17,8 @@ set(SHUTDOWN_SOURCES
 set(SHUTDOWN_RESOURCES
     qss.qrc
     image.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetstheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetsimages.qrc
 )
 
 configure_file(

@@ -7,6 +7,8 @@ add_executable(dde-wm-chooser
     main.cpp
     wmchooser.cpp
     wmframe.cpp
+    ${CMAKE_SOURCE_DIR}/widgets/widgetstheme.qrc
+    ${CMAKE_SOURCE_DIR}/widgets/widgetsimages.qrc
 )
 
 target_link_libraries(dde-wm-chooser PRIVATE
