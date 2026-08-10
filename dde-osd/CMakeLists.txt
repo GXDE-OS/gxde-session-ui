@@ -4,6 +4,10 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets DBus Xml Svg Sql)
 # libdframeworkdbus built against Qt6 only ships a CMake package, no .pc file.
 find_package(DFrameworkdbusQt6 REQUIRED)
 
+# Used to place the notification bubbles under Wayland, where a client is not
+# allowed to position its own toplevel windows via move().
+find_package(LayerShellQt REQUIRED)
+
 # dtk2widget is the Qt6 build of the DtkWidget 5.x API (DWIDGET_NAMESPACE = Dtk::Widget).
 # It must NOT be replaced by dtk6widget, whose API differs significantly.
 pkg_check_modules(OSD REQUIRED IMPORTED_TARGET
@@ -49,6 +53,13 @@ set(OSD_NOTIFICATION_SOURCES
     notification/appbodylabel.cpp
 )
 
+# Qt6 proxy for the gxde dock (top.gxde.daemon.dock), generated from the live
+# service introspection because libdframeworkdbus-qt6 ships no such proxy and
+# com.deepin.dde.daemon.Dock is broken under Wayland.
+set(OSD_GXDE_DOCK_SOURCES
+    generated/gxde_dock.cpp
+)
+
 # dde-osd only needs the session detection helper from global_util. That library
 # is still built against Qt5, so compile the single translation unit directly
 # instead of linking the Qt5 static library.
@@ -59,6 +70,7 @@ set(OSD_SHARED_SOURCES
 set(OSD_SOURCES
     ${OSD_MAIN_SOURCES}
     ${OSD_NOTIFICATION_SOURCES}
+    ${OSD_GXDE_DOCK_SOURCES}
     ${OSD_SHARED_SOURCES}
 )
 
@@ -87,6 +99,7 @@ target_compile_features(dde-osd PRIVATE cxx_std_17)
 target_include_directories(dde-osd PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/notification
+    ${CMAKE_CURRENT_SOURCE_DIR}/generated
     ${CMAKE_SOURCE_DIR}/global_util
 )
 
@@ -97,6 +110,7 @@ target_link_libraries(dde-osd PRIVATE
     Qt6::Svg
     Qt6::Sql
     DFrameworkdbusQt6::DFrameworkdbusQt6
+    LayerShellQt::Interface
     PkgConfig::OSD
 )
 

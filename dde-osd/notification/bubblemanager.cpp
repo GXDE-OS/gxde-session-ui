@@ -78,17 +78,28 @@ BubbleManager::BubbleManager(QObject *parent)
     connect(m_dbusDaemonInterface, SIGNAL(NameOwnerChanged(QString, QString, QString)),
             this, SLOT(onDbusNameOwnerChanged(QString, QString, QString)));
     connect(m_dbusdockinterface, &DBusDockInterface::geometryChanged, this, &BubbleManager::onDockRectChanged);
-    connect(m_dockDeamonInter, &DockDaemonInter::PositionChanged, this, &BubbleManager::onDockPositionChanged);
+    // The gxde dock does not emit typed property-change signals; watch the
+    // generic PropertiesChanged instead (covers both FrontendWindowRect and
+    // Position).
+    connect(m_dockDeamonInter, SIGNAL(PropertiesChanged(QString, QVariantMap, QStringList)),
+            this, SLOT(onDockPropertiesChanged(QString, QVariantMap, QStringList)));
     connect(m_dbusControlCenter, &DBusControlCenter::destRectChanged, this, &BubbleManager::onCCDestRectChanged);
     connect(m_dbusControlCenter, &DBusControlCenter::rectChanged, this, &BubbleManager::onCCRectChanged);
 
     // get correct value for m_dockGeometry, m_dockPosition, m_ccGeometry
-    if (m_dbusdockinterface->isValid())
-        onDockRectChanged(m_dbusdockinterface->geometry());
-    if (m_dockDeamonInter->isValid())
-        onDockPositionChanged(m_dockDeamonInter->position());
+    // NOTE: com.deepin.dde.daemon.Dock is broken under Wayland, so its geometry
+    // is ignored here; the gxde dock is the authoritative source.
     if (m_dbusControlCenter->isValid())
         onCCRectChanged(m_dbusControlCenter->rect());
+
+    // The gxde dock (top.gxde.daemon.dock) is the authoritative source for the
+    // window geometry. Its property may not be cached synchronously at startup,
+    // so defer the read to the event loop.
+    if (m_dockDeamonInter->isValid())
+        QTimer::singleShot(0, this, [this] {
+            onDockPositionChanged(m_dockDeamonInter->position());
+            onDockFrontendRectChanged(m_dockDeamonInter->frontendWindowRect());
+        });
 
     registerAsService();
 }
@@ -312,14 +323,18 @@ int BubbleManager::getX()
         return  maxX;
 
     const bool isCCDbusValid = m_dbusControlCenter->isValid();
-    const bool isDockDbusValid = m_dbusdockinterface->isValid();
+    const bool isDockDbusValid = m_dbusdockinterface->isValid() || m_dockDeamonInter->isValid();
 
     // DBus object is invalid, return screen right
     if (!isCCDbusValid && !isDockDbusValid)
         return maxX;
 
-    // if dock dbus is valid and dock position is right
-    if (isDockDbusValid && m_dockPosition == DockPosition::Right) {
+    // Detect a right dock from the geometry: it is a narrow vertical bar not at
+    // the left edge of the screen.
+    bool dockAtRight = isDockDbusValid && !m_dockGeometry.isEmpty()
+                      && m_dockGeometry.height() >= m_dockGeometry.width()
+                      && m_dockGeometry.x() > 0;
+    if (dockAtRight) {
         // check dde-control-center is valid
         if (isCCDbusValid) {
             if (m_ccGeometry.x() >  m_dockGeometry.x()) {
@@ -351,7 +366,7 @@ int BubbleManager::getY()
     if (!pair.second)
         return  rect.y();
 
-    if (!m_dbusdockinterface->isValid())
+    if (!m_dbusdockinterface->isValid() && !m_dockDeamonInter->isValid())
         return rect.y();
 
     if (m_dockPosition == DockPosition::Top)
@@ -362,21 +377,25 @@ int BubbleManager::getY()
 
 int BubbleManager::getBottom()
 {
-    // [1] 原始位置 getY()
-    // [2] 新位置：右下角(如果 dde-dock 不存在的话强制计算)
+    // Pin the bubble to the bottom-right corner of the screen, but leave room
+    // for the dock when it sits at the bottom so the notification does not cover
+    // it. The dock position is derived from the dock window geometry itself so it
+    // works regardless of which dock service / enum is active.
     QPair<QRect, bool> pair = screensInfo(QCursor::pos());
     const QRect &rect = pair.first;
 
     const int bottom_default_padding = BubbleHeight + Padding + Padding;
 
-    if (!pair.second)
-        goto rect_bottom_of_bubble_top;
+    const bool dockAvailable = m_dbusdockinterface->isValid() || m_dockDeamonInter->isValid();
 
-    if (!m_dbusdockinterface->isValid())
-        goto rect_bottom_of_bubble_top;
+    // Detect a bottom dock from the geometry: it spans the full screen width and
+    // sits at the bottom edge.
+    bool dockAtBottom = dockAvailable && !m_dockGeometry.isEmpty()
+                        && m_dockGeometry.width() >= m_dockGeometry.height()
+                        && m_dockGeometry.y() > 0;
 
-    if (m_dockPosition == DockPosition::Top)
-        return m_dockGeometry.bottom();
+    if (!pair.second || !dockAtBottom)
+        goto rect_bottom_of_bubble_top;
 
     return m_dockGeometry.top() - bottom_default_padding;
 
@@ -399,6 +418,11 @@ QPair<QRect, bool> BubbleManager::screensInfo(const QPoint &point) const
 
 void BubbleManager::onDockRectChanged(const QRect &geometry)
 {
+    // When the gxde dock is available it is the authoritative source for the
+    // geometry, so ignore the (possibly wrong) deepin dock geometry.
+    if (m_dockDeamonInter->isValid())
+        return;
+
     m_dockGeometry = geometry;
 
     m_bubble->setBasePosition(getX(), getBottom());
@@ -409,14 +433,37 @@ void BubbleManager::onDockPositionChanged(int position)
     m_dockPosition = static_cast<DockPosition>(position);
 }
 
+void BubbleManager::onDockFrontendRectChanged(const QRect &rect)
+{
+    // The gxde dock (top.gxde.daemon.dock) exposes its actual visible window
+    // rectangle via FrontendWindowRect, which already reflects the hide state.
+    // Use it as the dock geometry so notifications can avoid covering it.
+    m_dockGeometry = rect;
+
+    m_bubble->setBasePosition(getX(), getBottom());
+}
+
+void BubbleManager::onDockPropertiesChanged(const QString &interface, const QVariantMap &changed, const QStringList &invalidated)
+{
+    Q_UNUSED(interface);
+
+    // The gxde dock does not emit a typed FrontendWindowRectChanged signal; react
+    // to the generic property change notification instead.
+    if (changed.contains("FrontendWindowRect") || invalidated.contains("FrontendWindowRect"))
+        onDockFrontendRectChanged(m_dockDeamonInter->frontendWindowRect());
+    if (changed.contains("Position") || invalidated.contains("Position"))
+        onDockPositionChanged(m_dockDeamonInter->position());
+}
+
 void BubbleManager::onDbusNameOwnerChanged(QString name, QString, QString newName)
 {
     if (name == ControlCenterDBusService && screensInfo(m_bubble->pos()).second && !newName.isEmpty()) {
         onCCRectChanged(m_dbusControlCenter->rect());
-    } else if (name == DBbsDockDBusServer && !newName.isEmpty()) {
+    } else if (name == DBbsDockDBusServer && !newName.isEmpty() && !m_dockDeamonInter->isValid()) {
         onDockRectChanged(m_dbusdockinterface->geometry());
     } else if (name == DockDaemonDBusServie && !newName.isEmpty()) {
         onDockPositionChanged(m_dockDeamonInter->position());
+        onDockFrontendRectChanged(m_dockDeamonInter->frontendWindowRect());
     }
 }
 

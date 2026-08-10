@@ -1,4 +1,4 @@
-gxde-session-ui (5.0.7) UNRELEASED; urgency=medium
+gxde-session-ui (5.0.8) UNRELEASED; urgency=medium
 
   * Change text
   * 消息提示显示至右下角
@@ -10,8 +10,11 @@ gxde-session-ui (5.0.7) UNRELEASED; urgency=medium
   * 修复在 wlcom 下 dde-shutdown 有标题栏的问题
   * 修复 dde-shutdown 壁纸问题
   * 修复无法记忆最后一次 session 问题
+  * 使用 cmake 替代 qmake 构建
+  * 修复 dde-osd Wayland 下崩溃、半透明异常、位置异常、抢占焦点、图标丢失等问题
+  * 迁移 dde-osd 至 Qt6
 
- -- gfdgd_xi <3025613752@qq.com>  Tue, 04 Aug 2026 12:13:17 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Mon, 10 Aug 2026 17:52:45 +0800
 
 gxde-session-ui (4.9.14-1+comsta) unstable; urgency=low
 

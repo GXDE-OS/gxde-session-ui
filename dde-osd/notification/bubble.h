@@ -92,6 +92,10 @@ private:
     void saveImg(const QImage &image);
     const QPixmap converToPixmap(const QDBusArgument &value);
 
+    // Positions the bubble through the layer-shell protocol. Returns false when
+    // not running under Wayland, so the caller can fall back to move().
+    bool updateLayerShellPosition(const QPoint &pos);
+
 private:
     NotificationEntity *m_entity;
 

@@ -32,9 +32,12 @@
 #include <QGuiApplication>
 #include "bubble.h"
 #include "dbusdock_interface.h"
-#include <com_deepin_dde_daemon_dock.h>
+#include "generated/gxde_dock.h"
 
-using DockDaemonInter =  com::deepin::dde::daemon::Dock;
+// The gxde dock exposes its window geometry via top.gxde.daemon.dock. The legacy
+// com.deepin.dde.daemon.Dock interface is broken under Wayland, so use the gxde
+// proxy generated from the live service introspection instead.
+using DockDaemonInter = top::gxde::daemon::dock;
 
 static const QString ControlCenterDBusService = "com.deepin.dde.ControlCenter";
 static const QString ControlCenterDBusPath = "/com/deepin/dde/ControlCenter";
@@ -48,8 +51,8 @@ static const QString DDENotifyDBusServer = "com.deepin.dde.Notification";
 static const QString DDENotifyDBusPath = "/com/deepin/dde/Notification";
 static const QString Login1DBusService = "org.freedesktop.login1";
 static const QString Login1DBusPath = "/org/freedesktop/login1";
-static const QString DockDaemonDBusServie = "com.deepin.dde.daemon.Dock";
-static const QString DockDaemonDBusPath = "/com/deepin/dde/daemon/Dock";
+static const QString DockDaemonDBusServie = "top.gxde.daemon.dock";
+static const QString DockDaemonDBusPath = "/top/gxde/daemon/dock";
 static const int ControlCenterWidth = 400;
 
 class DBusControlCenter;
@@ -108,6 +111,8 @@ private Q_SLOTS:
     void onCCRectChanged(const QRect &rect);
     void onDockRectChanged(const QRect &geometry);
     void onDockPositionChanged(int position);
+    void onDockFrontendRectChanged(const QRect &rect);
+    void onDockPropertiesChanged(const QString &interface, const QVariantMap &changed, const QStringList &invalidated);
     void onDbusNameOwnerChanged(QString, QString, QString);
     void onPrepareForSleep(bool);
 

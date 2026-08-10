@@ -32,6 +32,8 @@
 #include <DDBusSender>
 #include <DLog>
 
+#include <LayerShellQt/Shell>
+
 #include "notification/bubblemanager.h"
 #include "notification/notifications_dbus_adaptor.h"
 #include "manager.h"
@@ -50,8 +52,14 @@ int main(int argc, char *argv[])
 
     // The dxcb platform plugin is X11 only, loading it in a Wayland session
     // makes the application abort on startup.
-    if (!SessionType::isWayland())
+    if (!SessionType::isWayland()) {
         DApplication::loadDXcbPlugin();
+    } else {
+        // Wayland clients cannot position their own windows, so the bubbles are
+        // placed through the layer-shell protocol instead. This has to happen
+        // before the QGuiApplication instance is created.
+        LayerShellQt::Shell::useLayerShell();
+    }
 
     DApplication a(argc, argv);
     a.setAttribute(Qt::AA_UseHighDpiPixmaps);

@@ -44,6 +44,12 @@
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
 #include <QGuiApplication>
+#include <QScreen>
+#include <QWindow>
+
+#include <LayerShellQt/Window>
+
+#include "sessiontype.h"
 
 DWIDGET_USE_NAMESPACE
 
@@ -154,6 +160,49 @@ void Bubble::setEntity(NotificationEntity *entity)
 }
 
 
+bool Bubble::updateLayerShellPosition(const QPoint &pos)
+{
+    if (!SessionType::isWayland())
+        return false;
+
+    // Make sure the window handle exists, otherwise LayerShellQt::Window::get()
+    // has nothing to attach the layer surface to.
+    createWinId();
+
+    QWindow *win = windowHandle();
+    if (!win)
+        win = window() ? window()->windowHandle() : nullptr;
+    if (!win)
+        return false;
+
+    LayerShellQt::Window *lsWin = LayerShellQt::Window::get(win);
+    if (!lsWin)
+        return false;
+
+    // Layer-shell margins are relative to the anchored edges of the output. We
+    // follow dde-launcher's proven approach: anchor to the top-left corner, then
+    // use the top/left margins as a plain x/y offset to the bubble's top-left.
+    // The position supplied by BubbleManager is in global desktop coordinates, so
+    // translate it into coordinates local to the target screen.
+    QPoint localPos = pos;
+    const QScreen *screen = win->screen();
+    if (!m_screenGeometry.isEmpty())
+        localPos -= m_screenGeometry.topLeft();
+    else if (screen)
+        localPos -= screen->geometry().topLeft();
+
+    LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop);
+    anchors |= LayerShellQt::Window::AnchorLeft;
+    lsWin->setAnchors(anchors);
+    lsWin->setExclusiveZone(0);
+    // Notifications must stay above regular windows but below the lock screen.
+    lsWin->setLayer(LayerShellQt::Window::LayerTop);
+    lsWin->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
+    lsWin->setMargins(QMargins(localPos.x(), localPos.y(), 0, 0));
+
+    return true;
+}
+
 void Bubble::setBasePosition(int x, int y, QRect rect)
 {
     x -= Padding;
@@ -162,8 +211,15 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
     const QPoint dPos(x - BubbleWidth, y);
     const QSize dSize(BubbleWidth, BubbleHeight);
 
-    move(dPos);
+    if (!rect.isEmpty())
+        m_screenGeometry = rect;
+
     resize(dSize);
+
+    // Under Wayland a client cannot position its own toplevel, move() is a
+    // no-op there and the compositor would place the bubble arbitrarily.
+    if (!updateLayerShellPosition(dPos))
+        move(dPos);
 
     if (m_outAnimation->state() != QPropertyAnimation::Running) {
         const QRect normalGeo( dPos, dSize );
@@ -172,9 +228,6 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
         m_outAnimation->setStartValue(normalGeo);
         m_outAnimation->setEndValue(outGeo);
     }
-
-    if (!rect.isEmpty())
-        m_screenGeometry = rect;
 }
 
 void Bubble::compositeChanged()
@@ -466,13 +519,18 @@ void Bubble::resetMoveAnim(const QRect &rect)
 {
     if (isVisible() && m_outAnimation->state() != QPropertyAnimation::Running) {
         const QPoint &endPoint = QPoint(rect.x() - Padding - BubbleWidth, y());
-        m_moveAnimation->setStartValue(QPoint(x(), y()));
-        m_moveAnimation->setEndValue(endPoint);
 
         const QRect &startRect = QRect(endPoint, QSize(BubbleWidth, BubbleHeight));
         m_outAnimation->setStartValue(startRect);
         m_outAnimation->setEndValue(QRect(startRect.right(), startRect.y(), 0, BubbleHeight));
 
+        // Animating the "pos" property has no effect on Wayland, jump straight
+        // to the final position through the layer surface margins instead.
+        if (updateLayerShellPosition(endPoint))
+            return;
+
+        m_moveAnimation->setStartValue(QPoint(x(), y()));
+        m_moveAnimation->setEndValue(endPoint);
         m_moveAnimation->start();
     }
 }
