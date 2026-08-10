@@ -22,7 +22,13 @@ Build-Depends: debhelper (>= 8.0.0), pkg-config,
  libxcursor-dev,
  libxrandr-dev,
  libdtkcore5-bin,
- libdtkcore-dev
+ libdtkcore-dev,
+ layer-shell-qt,
+ liblayershellqtinterface-dev,
+ qt6-tools-dev-tools,
+ qt6-tools-dev,
+ libdtk2widget6-dev,
+ qt6-base-dev,
 Standards-Version: 3.9.4
 Homepage: http://www.deepin.org/
 

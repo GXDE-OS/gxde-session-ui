@@ -1,4 +1,4 @@
-gxde-session-ui (5.0.8) UNRELEASED; urgency=medium
+gxde-session-ui (5.1.0) UNRELEASED; urgency=medium
 
   * Change text
   * 消息提示显示至右下角
