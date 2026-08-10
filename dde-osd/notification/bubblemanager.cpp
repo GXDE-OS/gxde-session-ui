@@ -386,13 +386,15 @@ rect_bottom_of_bubble_top:
 
 QPair<QRect, bool> BubbleManager::screensInfo(const QPoint &point) const
 {
-    QDesktopWidget *desktop = QApplication::desktop();
-    int pointScreen = desktop->screenNumber(point);
-    int primaryScreen = desktop->primaryScreen();
+    QScreen *primaryScreen = QGuiApplication::primaryScreen();
+    QScreen *pointScreen = QGuiApplication::screenAt(point);
+    if (!pointScreen)
+        pointScreen = primaryScreen;
 
-    QRect rect = desktop->screenGeometry(pointScreen);
+    if (!pointScreen)
+        return QPair<QRect, bool>(QRect(), false);
 
-    return QPair<QRect, bool>(rect, (pointScreen == primaryScreen));
+    return QPair<QRect, bool>(pointScreen->geometry(), pointScreen == primaryScreen);
 }
 
 void BubbleManager::onDockRectChanged(const QRect &geometry)
@@ -432,14 +434,12 @@ void BubbleManager::consumeEntities()
 
     m_currentNotify = m_entities.dequeue();
 
-    QDesktopWidget *desktop = QApplication::desktop();
-    int pointerScreen = desktop->screenNumber(QCursor::pos());
-    int primaryScreen = desktop->primaryScreen();
-    QWidget *pScreenWidget = desktop->screen(primaryScreen);
+    QScreen *targetScreen = QGuiApplication::screenAt(QCursor::pos());
+    if (!targetScreen)
+        targetScreen = QGuiApplication::primaryScreen();
 
-    if (pointerScreen != primaryScreen)
-        pScreenWidget = desktop->screen(pointerScreen);
+    const QRect screenGeometry = targetScreen ? targetScreen->geometry() : QRect();
 
-    m_bubble->setBasePosition(getX(), getBottom(), pScreenWidget->geometry());
+    m_bubble->setBasePosition(getX(), getBottom(), screenGeometry);
     m_bubble->setEntity(m_currentNotify);
 }

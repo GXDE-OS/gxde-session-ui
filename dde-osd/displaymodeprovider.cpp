@@ -27,7 +27,7 @@
 
 DisplayModeProvider::DisplayModeProvider(QObject *parent)
     : AbstractOSDProvider(parent),
-      m_displayInter(new Display("com.deepin.daemon.Display",
+      m_displayInter(new com::deepin::daemon::Display("com.deepin.daemon.Display",
                                  "/com/deepin/daemon/Display",
                                  QDBusConnection::sessionBus(), this))
 {

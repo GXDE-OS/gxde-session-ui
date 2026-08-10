@@ -30,6 +30,9 @@
 #include <QMenu>
 
 #include <com_deepin_daemon_inputdevice_keyboard.h>
+// The Qt6 build of libdframeworkdbus no longer pulls the typedef in through
+// the interface header, so include it explicitly.
+#include <types/keyboardlayoutlist.h>
 
 using KeyboardInterface = com::deepin::daemon::inputdevice::Keyboard;
 

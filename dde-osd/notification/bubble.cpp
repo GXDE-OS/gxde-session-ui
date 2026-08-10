@@ -26,7 +26,6 @@
 #include <QDebug>
 #include <QTimer>
 #include <QPropertyAnimation>
-#include <QDesktopWidget>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonDocument>
@@ -44,9 +43,18 @@
 
 #include <xcb/xcb.h>
 #include <xcb/xcb_ewmh.h>
-#include <QX11Info>
+#include <QGuiApplication>
 
 DWIDGET_USE_NAMESPACE
+
+// Qt6 dropped QX11Info, the xcb connection is exposed through the native interface.
+static xcb_connection_t *x11Connection()
+{
+    if (auto *x11App = qGuiApp->nativeInterface<QNativeInterface::QX11Application>())
+        return x11App->connection();
+
+    return nullptr;
+}
 
 static const QString BubbleStyleSheet = "QFrame#Background { "
                                         "background-color: rgba(0, 0, 0, 60);"
@@ -66,13 +74,14 @@ static const QStringList HintsOrder {
 };
 
 void register_wm_state(WId winid) {
-    // EWMH is a X11 only protocol. Under Wayland QX11Info::connection()
-    // returns nullptr and xcb_ewmh_init_atoms() would crash.
-    if (!QX11Info::isPlatformX11() || !QX11Info::connection())
+    // EWMH is a X11 only protocol. Under Wayland there is no xcb connection
+    // and xcb_ewmh_init_atoms() would crash.
+    xcb_connection_t *connection = x11Connection();
+    if (!connection)
         return;
 
     xcb_ewmh_connection_t m_ewmh_connection;
-    xcb_intern_atom_cookie_t *cookie = xcb_ewmh_init_atoms(QX11Info::connection(), &m_ewmh_connection);
+    xcb_intern_atom_cookie_t *cookie = xcb_ewmh_init_atoms(connection, &m_ewmh_connection);
     xcb_ewmh_init_atoms_replies(&m_ewmh_connection, cookie, NULL);
 
     xcb_atom_t atoms[2];

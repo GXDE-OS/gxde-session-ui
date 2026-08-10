@@ -31,7 +31,7 @@ AppBody::AppBody(QWidget *parent)
     m_bodyLbl->setStyleSheet("QLabel { color: rgba(0,0,0,0.9); }");
 
     QVBoxLayout *layout = new QVBoxLayout;
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(2);
     layout->addStretch();
     layout->addWidget(m_titleLbl, 0, Qt::AlignVCenter);

@@ -27,7 +27,7 @@
 #include <QStringList>
 #include <QVariantMap>
 #include <QQueue>
-#include <QDesktopWidget>
+#include <QScreen>
 #include <QApplication>
 #include <QGuiApplication>
 #include "bubble.h"

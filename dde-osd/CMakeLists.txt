@@ -1,7 +1,18 @@
 find_package(PkgConfig REQUIRED)
-find_package(Qt5 REQUIRED COMPONENTS Widgets DBus Xml X11Extras Svg Sql)
+find_package(Qt6 REQUIRED COMPONENTS Widgets DBus Xml Svg Sql)
 
-pkg_check_modules(OSD REQUIRED dframeworkdbus dtkwidget gsettings-qt xcb-ewmh)
+# libdframeworkdbus built against Qt6 only ships a CMake package, no .pc file.
+find_package(DFrameworkdbusQt6 REQUIRED)
+
+# dtk2widget is the Qt6 build of the DtkWidget 5.x API (DWIDGET_NAMESPACE = Dtk::Widget).
+# It must NOT be replaced by dtk6widget, whose API differs significantly.
+pkg_check_modules(OSD REQUIRED IMPORTED_TARGET
+    dtk2widget
+    gsettings-qt6
+    xcb-ewmh
+    x11
+    xext
+)
 
 set(OSD_MAIN_SOURCES
     main.cpp
@@ -38,7 +49,18 @@ set(OSD_NOTIFICATION_SOURCES
     notification/appbodylabel.cpp
 )
 
-set(OSD_SOURCES ${OSD_MAIN_SOURCES} ${OSD_NOTIFICATION_SOURCES})
+# dde-osd only needs the session detection helper from global_util. That library
+# is still built against Qt5, so compile the single translation unit directly
+# instead of linking the Qt5 static library.
+set(OSD_SHARED_SOURCES
+    ${CMAKE_SOURCE_DIR}/global_util/sessiontype.cpp
+)
+
+set(OSD_SOURCES
+    ${OSD_MAIN_SOURCES}
+    ${OSD_NOTIFICATION_SOURCES}
+    ${OSD_SHARED_SOURCES}
+)
 
 set(OSD_RESOURCES
     image.qrc
@@ -59,22 +81,24 @@ configure_file(
 
 add_executable(dde-osd ${OSD_SOURCES} ${OSD_RESOURCES})
 
+# Qt6 requires C++17, the rest of the project is still built as C++14.
+target_compile_features(dde-osd PRIVATE cxx_std_17)
+
 target_include_directories(dde-osd PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/notification
+    ${CMAKE_SOURCE_DIR}/global_util
 )
+
 target_link_libraries(dde-osd PRIVATE
-    global_util
-    ${Qt5Widgets_LIBRARIES}
-    ${Qt5DBus_LIBRARIES}
-    ${Qt5X11Extras_LIBRARIES}
-    ${Qt5Svg_LIBRARIES}
-    ${Qt5Sql_LIBRARIES}
-    ${Qt5Xml_LIBRARIES}
-    ${OSD_LIBRARIES}
+    Qt6::Widgets
+    Qt6::DBus
+    Qt6::Xml
+    Qt6::Svg
+    Qt6::Sql
+    DFrameworkdbusQt6::DFrameworkdbusQt6
+    PkgConfig::OSD
 )
-target_include_directories(dde-osd PRIVATE ${OSD_INCLUDE_DIRS})
-target_link_libraries(dde-osd PRIVATE -lX11 -lXext)
 
 install(TARGETS dde-osd DESTINATION ${PREFIX}/lib/deepin-daemon/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/com.deepin.dde.osd.service

@@ -30,7 +30,9 @@
 
 #include <com_deepin_daemon_display.h>
 
-using namespace com::deepin::daemon;
+// No `using namespace com::deepin::daemon;` here: it makes that namespace's
+// `Display` typedef clash with the global one from Xlib, which Qt6 pulls in
+// via <QScreen>.
 
 class DisplayModeProvider : public AbstractOSDProvider
 {
@@ -64,7 +66,9 @@ private:
     QStringList m_outputNames;
     QString m_primaryScreen;
 
-    Display *m_displayInter;
+    // Qualify explicitly: X11's Xlib.h defines a global `Display` type which
+    // otherwise clashes with com::deepin::daemon::Display.
+    com::deepin::daemon::Display *m_displayInter;
 
     void updateOutputNames();
     void updatePlanItems();

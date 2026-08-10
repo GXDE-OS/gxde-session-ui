@@ -88,7 +88,7 @@ QSize KBLayoutProvider::contentSize() const
     const QFont appNamefont(qApp->font());
     const QFontMetrics fm(appNamefont);
 
-    return QSize(qMax(fm.width(list.first()), TextItemWidth) + 30, (fm.height() + 10) * count + 20);
+    return QSize(qMax(fm.horizontalAdvance(list.first()), TextItemWidth) + 30, (fm.height() + 10) * count + 20);
 }
 
 QMargins KBLayoutProvider::contentMargins() const
@@ -144,7 +144,7 @@ void KBLayoutProvider::paint(QPainter *painter, const QStyleOptionViewItem &opti
 
 QSize KBLayoutProvider::sizeHint(const QStyleOptionViewItem &opt, const QModelIndex &index) const
 {
-    return QSize(qMax(TextItemWidth, opt.fontMetrics.width(index.data().toString())), opt.fontMetrics.height() + 10);
+    return QSize(qMax(TextItemWidth, opt.fontMetrics.horizontalAdvance(index.data().toString())), opt.fontMetrics.height() + 10);
 }
 
 QString KBLayoutProvider::describeLayout(const QString &layout) const

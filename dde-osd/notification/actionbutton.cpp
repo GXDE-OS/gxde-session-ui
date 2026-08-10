@@ -38,7 +38,7 @@ ActionButton::ActionButton(QWidget *parent) :
     setFixedSize(70, 70);
 
     m_layout = new QVBoxLayout;
-    m_layout->setMargin(0);
+    m_layout->setContentsMargins(0, 0, 0, 0);
     m_layout->setSpacing(0);
 
     setLayout(m_layout);

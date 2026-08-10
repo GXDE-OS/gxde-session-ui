@@ -26,8 +26,8 @@
 #include "container.h"
 
 #include <QHBoxLayout>
-#include <QDesktopWidget>
 #include <QApplication>
+#include <QScreen>
 #include <QDebug>
 #include <QTimer>
 #include <QGSettings>
@@ -47,7 +47,7 @@ Container::Container(QWidget *parent)
 
     m_layout = new QHBoxLayout;
     m_layout->setSpacing(0);
-    m_layout->setMargin(0);
+    m_layout->setContentsMargins(0, 0, 0, 0);
     setLayout(m_layout);
 
     const int radius = getWindowRadius();
@@ -76,9 +76,10 @@ void Container::setContent(QWidget *content)
 
 void Container::moveToCenter()
 {
-    QDesktopWidget *desktop = QApplication::desktop();
-    const int primary = desktop->primaryScreen();
-    const QRect primaryRect = desktop->screenGeometry(primary);
+    QScreen *primary = QGuiApplication::primaryScreen();
+    if (!primary)
+        return;
+    const QRect primaryRect = primary->geometry();
 
     // [1] 原本显示在中心下边
     // move(primaryRect.center() - rect().center());
