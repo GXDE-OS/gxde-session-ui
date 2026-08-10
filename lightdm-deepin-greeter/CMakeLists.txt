@@ -15,6 +15,7 @@ add_executable(lightdm-deepin-greeter
 
 target_link_libraries(lightdm-deepin-greeter PRIVATE
     session-widgets
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
     ${Qt5X11Extras_LIBRARIES}

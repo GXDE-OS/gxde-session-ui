@@ -29,6 +29,7 @@
 #include "sessionbasemodel.h"
 #include "propertygroup.h"
 #include "multiscreenmanager.h"
+#include "sessiontype.h"
 
 #include <DApplication>
 #include <QtCore/QTranslator>
@@ -130,6 +131,12 @@ static int set_rootwindow_cursor() {
 
 static double get_scale_ratio() {
     Display *display = XOpenDisplay(NULL);
+    if (!display) {
+        // No X server (pure Wayland session). Let Qt figure the scaling out
+        // via QT_AUTO_SCREEN_SCALE_FACTOR instead of crashing in XRandR.
+        qWarning() << "open display failed, fallback to automatic scaling.";
+        return 0.0;
+    }
 
     XRRScreenResources *resources = XRRGetScreenResourcesCurrent(display, DefaultRootWindow(display));
     double scaleRatio = 0.0;
@@ -142,10 +149,18 @@ static double get_scale_ratio() {
     if (resources) {
         for (int i = 0; i < resources->noutput; i++) {
             XRROutputInfo* outputInfo = XRRGetOutputInfo(display, resources, resources->outputs[i]);
-            if (outputInfo->crtc == 0 || outputInfo->mm_width == 0) continue;
+            if (!outputInfo) continue;
+
+            if (outputInfo->crtc == 0 || outputInfo->mm_width == 0) {
+                XRRFreeOutputInfo(outputInfo);
+                continue;
+            }
 
             XRRCrtcInfo *crtInfo = XRRGetCrtcInfo(display, resources, outputInfo->crtc);
-            if (crtInfo == nullptr) continue;
+            if (crtInfo == nullptr) {
+                XRRFreeOutputInfo(outputInfo);
+                continue;
+            }
 
             scaleRatio = (double)crtInfo->width / (double)outputInfo->mm_width / (1366.0 / 310.0);
 
@@ -158,11 +173,18 @@ static double get_scale_ratio() {
             else {
                 scaleRatio = 1;
             }
+
+            XRRFreeCrtcInfo(crtInfo);
+            XRRFreeOutputInfo(outputInfo);
         }
+
+        XRRFreeScreenResources(resources);
     }
     else {
         qWarning() << "get scale radio failed, please check X11 Extension.";
     }
+
+    XCloseDisplay(display);
 
     return scaleRatio;
 }
@@ -188,9 +210,9 @@ int main(int argc, char* argv[])
         DApplication::customQtThemeConfigPath("/etc/lightdm/");
     }
 
-    DApplication::loadDXcbPlugin();
-    Q_INIT_RESOURCE(widgetsimages);
-    Q_INIT_RESOURCE(widgetstheme);
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
 
     DApplication a(argc, argv);
     qApp->setOrganizationName("deepin");

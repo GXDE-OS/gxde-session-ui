@@ -46,7 +46,10 @@ script.files = deepin-greeter
 hooks.path = /etc/deepin/greeters.d
 hooks.files += scripts/*
 
-INSTALLS += target desktop_file script hooks
+override.path = /etc/systemd/system/accounts-daemon.service.d
+override.files = accounts-daemon.service.d/*
+
+INSTALLS += target desktop_file script hooks override
 
 RESOURCES += \
     image.qrc \

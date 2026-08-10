@@ -32,6 +32,8 @@
 
 #include <memory>
 
+#include <QGSettings/QGSettings>
+
 #include <com_deepin_wm.h>
 #include <com_deepin_daemon_appearance.h>
 #include <com_deepin_daemon_imageblur.h>
@@ -130,5 +132,6 @@ private:
     Appearance *m_dbusAppearance = NULL;
     ImageBlur *m_blurImageInter;
     SessionBaseModel *m_model;
+    QGSettings *m_gsettings = nullptr;
 };
 #endif // CONTENTVIEWWIDGET

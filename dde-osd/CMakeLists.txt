@@ -64,6 +64,7 @@ target_include_directories(dde-osd PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/notification
 )
 target_link_libraries(dde-osd PRIVATE
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
     ${Qt5X11Extras_LIBRARIES}

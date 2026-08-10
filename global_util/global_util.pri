@@ -2,6 +2,10 @@ INCLUDEPATH += $$PWD
 
 QT  += xml
 
+# sessiontype.cpp probes the X server to tell X11 and Wayland sessions apart.
+CONFIG    += link_pkgconfig
+PKGCONFIG += x11
+
 HEADERS += \
     $$PWD/util_updateui.h \
     $$PWD/constants.h \
@@ -19,6 +23,7 @@ HEADERS += \
     $$PWD/dbus/dbuslockfront.h \
     $$PWD/dbus/dbusmediaplayer2.h \
     $$PWD/public_func.h \
+    $$PWD/sessiontype.h \
     $$PWD/multiscreenmanager.h
 
 SOURCES += \
@@ -37,6 +42,7 @@ SOURCES += \
     $$PWD/dbus/dbuslockfront.cpp \
     $$PWD/dbus/dbusmediaplayer2.cpp \
     $$PWD/public_func.cpp \
+    $$PWD/sessiontype.cpp \
     $$PWD/multiscreenmanager.cpp
 
 DISTFILES += \

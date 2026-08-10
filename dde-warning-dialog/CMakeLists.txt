@@ -9,6 +9,7 @@ add_executable(dde-warning-dialog
 )
 
 target_link_libraries(dde-warning-dialog PRIVATE
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
     ${WARNING_LIBRARIES}

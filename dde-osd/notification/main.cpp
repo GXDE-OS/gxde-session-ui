@@ -19,6 +19,7 @@
 
 #include "bubblemanager.h"
 #include "notifications_dbus_adaptor.h"
+#include "sessiontype.h"
 
 #include <DLog>
 #include <DApplication>
@@ -30,7 +31,9 @@ DWIDGET_USE_NAMESPACE
 
 int main(int argc, char *argv[])
 {
-    DApplication::loadDXcbPlugin();
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
 
     DApplication app(argc, argv);
     app.setTheme("light");

@@ -29,6 +29,7 @@
 #include "dbus/dbuslockfrontservice.h"
 #include "dbus/dbuslockagent.h"
 #include "multiscreenmanager.h"
+#include "sessiontype.h"
 
 #include "lockcontent.h"
 #include "lockworker.h"
@@ -47,10 +48,10 @@ DWIDGET_USE_NAMESPACE
 
 int main(int argc, char *argv[])
 {
-    Q_INIT_RESOURCE(widgetsimages);
-    Q_INIT_RESOURCE(widgetstheme);
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
 
-    DApplication::loadDXcbPlugin();
     DApplication app(argc, argv);
     app.setOrganizationName("deepin");
     app.setApplicationName("dde-lock");

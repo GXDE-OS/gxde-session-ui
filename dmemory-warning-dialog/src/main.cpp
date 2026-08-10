@@ -25,6 +25,7 @@
 
 #include "dmemorywarningdialog.h"
 #include "dmemorywarningdialogadaptor.h"
+#include "sessiontype.h"
 
 #include <DApplication>
 #include <DLog>
@@ -37,7 +38,10 @@ DCORE_USE_NAMESPACE
 
 int main(int argc, char *args[])
 {
-    DApplication::loadDXcbPlugin();
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
+
     DApplication dapp(argc, args);
     dapp.setQuitOnLastWindowClosed(false);
     dapp.setAttribute(Qt::AA_UseHighDpiPixmaps);

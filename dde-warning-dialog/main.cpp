@@ -24,6 +24,7 @@
  */
 
 #include "warningdialog.h"
+#include "sessiontype.h"
 #include <DApplication>
 #include <QTranslator>
 #include <QDBusConnection>
@@ -39,7 +40,10 @@ static const QString Interface = "com.deepin.dde.WarningDialog";
 
 int main(int argc, char *argv[])
 {
-    DApplication::loadDXcbPlugin();
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
+
     DApplication a(argc, argv);
     a.setApplicationName("dde-warning-dialog");
     a.setApplicationVersion("1.0");

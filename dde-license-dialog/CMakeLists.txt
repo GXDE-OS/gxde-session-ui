@@ -17,6 +17,7 @@ set(HEADERS
 add_executable(dde-license-dialog ${SOURCES} ${HEADERS})
 
 target_link_libraries(dde-license-dialog PRIVATE
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${LICENSE_DIALOG_LIBRARIES}
 )

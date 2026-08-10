@@ -10,6 +10,7 @@ add_executable(dmemory-warning-dialog ${SRCS})
 
 target_include_directories(dmemory-warning-dialog PRIVATE ${DMW_INCLUDE_DIRS})
 target_link_libraries(dmemory-warning-dialog PRIVATE
+    global_util
     ${DMW_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
     ${Qt5Concurrent_LIBRARIES}

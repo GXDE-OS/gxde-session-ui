@@ -26,6 +26,7 @@
 #include "wmframe.h"
 #include "propertygroup.h"
 #include "multiscreenmanager.h"
+#include "sessiontype.h"
 
 #include <DApplication>
 #include <QCommandLineOption>
@@ -41,10 +42,10 @@ DWIDGET_USE_NAMESPACE
 
 int main(int argc, char *argv[])
 {
-    Q_INIT_RESOURCE(widgetsimages);
-    Q_INIT_RESOURCE(widgetstheme);
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
 
-    DApplication::loadDXcbPlugin();
     DApplication a(argc, argv);
     a.setApplicationName("deepin-wm-chooser");
 

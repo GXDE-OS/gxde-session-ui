@@ -36,6 +36,7 @@
 #include "notification/notifications_dbus_adaptor.h"
 #include "manager.h"
 #include "kblayoutindicator.h"
+#include "sessiontype.h"
 
 DWIDGET_USE_NAMESPACE
 DCORE_USE_NAMESPACE
@@ -47,7 +48,11 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    DApplication::loadDXcbPlugin();
+    // The dxcb platform plugin is X11 only, loading it in a Wayland session
+    // makes the application abort on startup.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
+
     DApplication a(argc, argv);
     a.setAttribute(Qt::AA_UseHighDpiPixmaps);
     a.setApplicationName("dde-osd");

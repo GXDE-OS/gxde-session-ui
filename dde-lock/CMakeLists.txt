@@ -17,6 +17,7 @@ add_executable(dde-lock
 
 target_link_libraries(dde-lock PRIVATE
     session-widgets
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
     ${Qt5X11Extras_LIBRARIES}

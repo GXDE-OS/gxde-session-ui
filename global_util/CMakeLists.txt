@@ -15,6 +15,7 @@ add_library(global_util STATIC
     dbus/dbuscontrolcenter.cpp
     dbus/dbuslockfront.cpp
     dbus/dbusmediaplayer2.cpp
+    sessiontype.cpp
 )
 
 target_include_directories(global_util PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -30,5 +31,6 @@ target_link_libraries(global_util PUBLIC
     ${Qt5DBus_LIBRARIES}
     ${Qt5X11Extras_LIBRARIES}
     ${GLOBAL_UTIL_LIBRARIES}
+    -lX11
 )
 target_include_directories(global_util PUBLIC ${GLOBAL_UTIL_INCLUDE_DIRS})

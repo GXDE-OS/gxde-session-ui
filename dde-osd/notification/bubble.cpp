@@ -66,6 +66,11 @@ static const QStringList HintsOrder {
 };
 
 void register_wm_state(WId winid) {
+    // EWMH is a X11 only protocol. Under Wayland QX11Info::connection()
+    // returns nullptr and xcb_ewmh_init_atoms() would crash.
+    if (!QX11Info::isPlatformX11() || !QX11Info::connection())
+        return;
+
     xcb_ewmh_connection_t m_ewmh_connection;
     xcb_intern_atom_cookie_t *cookie = xcb_ewmh_init_atoms(QX11Info::connection(), &m_ewmh_connection);
     xcb_ewmh_init_atoms_replies(&m_ewmh_connection, cookie, NULL);

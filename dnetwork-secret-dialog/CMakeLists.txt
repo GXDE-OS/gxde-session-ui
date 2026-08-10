@@ -10,6 +10,7 @@ add_executable(dnetwork-secret-dialog
 )
 
 target_link_libraries(dnetwork-secret-dialog PRIVATE
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${NETWORK_SECRET_LIBRARIES}
 )

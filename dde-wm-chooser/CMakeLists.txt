@@ -11,6 +11,7 @@ add_executable(dde-wm-chooser
 
 target_link_libraries(dde-wm-chooser PRIVATE
     session-widgets
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
     ${Qt5X11Extras_LIBRARIES}

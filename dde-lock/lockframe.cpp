@@ -28,6 +28,7 @@
 #include "sessionbasemodel.h"
 #include "userinfo.h"
 #include "timewidget.h"
+#include "sessiontype.h"
 
 #include <QApplication>
 #include <QX11Info>
@@ -65,6 +66,15 @@ void LockFrame::showUserList() {
 
 void LockFrame::tryGrabKeyboard()
 {
+    // Wayland does not allow a client to grab the keyboard globally; the
+    // compositor owns the input exclusivity of the lock surface instead.
+    // Calling XGrabKeyboard() with the null display returned by QX11Info
+    // under Wayland crashes dde-lock, so skip it entirely.
+    if (SessionType::isWayland() || !QX11Info::isPlatformX11() || !QX11Info::display()) {
+        qDebug() << "not running on X11, skip grabbing keyboard";
+        return;
+    }
+
     int requestCode = XGrabKeyboard(QX11Info::display(), winId(), true, GrabModeAsync, GrabModeAsync, CurrentTime);
 
     if (requestCode != 0) {

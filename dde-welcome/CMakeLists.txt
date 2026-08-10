@@ -13,6 +13,7 @@ add_executable(dde-welcome
 
 target_link_libraries(dde-welcome PRIVATE
     session-widgets
+    global_util
     ${Qt5Widgets_LIBRARIES}
     ${Qt5DBus_LIBRARIES}
     ${Qt5X11Extras_LIBRARIES}

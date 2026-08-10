@@ -25,6 +25,8 @@
 
 #include "keyboardmonitor.h"
 
+#include "sessiontype.h"
+
 #include <QX11Info>
 #include <QDebug>
 
@@ -83,6 +85,8 @@ void select_events(Display* display)
     m.deviceid = XIAllMasterDevices;
     m.mask_len = XIMaskLen(XI_LASTEVENT);
     m.mask = (unsigned char*)calloc(m.mask_len, sizeof(char));
+    if (!m.mask)
+        return;
 
     //    XISetMask(m.mask, XI_RawKeyPress);
     XISetMask(m.mask, XI_RawKeyRelease);
@@ -106,7 +110,7 @@ int KeyboardMonitor::listen(Display *display)
     Window noused_window;
     unsigned int mask;
 
-    while(1)
+    while(!isInterruptionRequested())
     {
         XEvent ev;
         XGenericEventCookie *cookie = (XGenericEventCookie*)&ev.xcookie;
@@ -176,6 +180,11 @@ bool KeyboardMonitor::isCapslockOn()
     unsigned int n = 0;
     static Display* d = QX11Info::display();
 
+    // Under Wayland there is no X display, XkbGetIndicatorState() would
+    // dereference a null pointer and crash.
+    if (!d)
+        return false;
+
     XkbGetIndicatorState(d, XkbUseCoreKbd, &n);
     result = (n & 0x01) != 0;
 
@@ -188,6 +197,9 @@ bool KeyboardMonitor::isNumlockOn()
     unsigned int n = 0;
     static Display* d = QX11Info::display();
 
+    if (!d)
+        return false;
+
     XkbGetIndicatorState(d, XkbUseCoreKbd, &n);
     result = (n & 0x02) != 0;
 
@@ -197,6 +209,11 @@ bool KeyboardMonitor::isNumlockOn()
 bool KeyboardMonitor::setNumlockStatus(const bool &on)
 {
     Display* d = QX11Info::display();
+
+    if (!d) {
+        qWarning() << "no X display available, cannot set numlock status";
+        return false;
+    }
 
     XKeyboardState x;
     XGetKeyboardControl(d, &x);
@@ -222,19 +239,35 @@ bool KeyboardMonitor::setNumlockStatus(const bool &on)
 
 void KeyboardMonitor::run()
 {
+    // On a Wayland session raw X input events are not available at all. Bail
+    // out early instead of opening a null display and dereferencing it.
+    if (SessionType::isWayland()) {
+        qInfo() << "wayland session detected, X11 keyboard monitor disabled";
+        return;
+    }
+
     Display* display = XOpenDisplay(NULL);
+    if (!display) {
+        qWarning() << "failed to open X display, keyboard monitor disabled";
+        return;
+    }
+
     int event, error;
 
     if (!XQueryExtension(display, "XInputExtension", &xi2_opcode, &event, &error)) {
         fprintf(stderr, "XInput2 not available.\n");
+        XCloseDisplay(display);
         return;
     }
 
     if (!xinput_version(display)) {
         fprintf(stderr, "XInput2 extension not available\n");
+        XCloseDisplay(display);
         return;
     }
 
     select_events(display);
     listen(display);
+
+    XCloseDisplay(display);
 }
