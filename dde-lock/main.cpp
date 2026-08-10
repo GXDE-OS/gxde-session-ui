@@ -47,7 +47,10 @@ DWIDGET_USE_NAMESPACE
 
 int main(int argc, char *argv[])
 {
-    DApplication::loadDXcbPlugin();
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
+
     DApplication app(argc, argv);
     app.setOrganizationName("deepin");
     app.setApplicationName("dde-lock");

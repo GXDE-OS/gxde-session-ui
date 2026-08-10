@@ -14,7 +14,10 @@ TEMPLATE = app
 CONFIG += c++11 link_pkgconfig
 PKGCONFIG += dframeworkdbus dtkwidget gsettings-qt xcb-ewmh
 
+INCLUDEPATH += $$PWD/../global_util
+
 SOURCES += main.cpp \
+    ../global_util/sessiontype.cpp \
     container.cpp \
     manager.cpp \
     listview.cpp \
@@ -31,6 +34,7 @@ SOURCES += main.cpp \
     kblayoutindicator.cpp
 
 HEADERS  += container.h \
+    ../global_util/sessiontype.h \
     manager.h \
     listview.h \
     delegate.h \

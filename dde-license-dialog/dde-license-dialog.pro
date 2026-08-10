@@ -13,7 +13,9 @@ TEMPLATE = app
 
 CONFIG += link_pkgconfig
 CONFIG += c++14
-PKGCONFIG += dtkwidget
+PKGCONFIG += dtkwidget x11
+
+INCLUDEPATH += $$PWD/../global_util
 
 # The following define makes your compiler emit warnings if you use
 # any feature of Qt which has been marked as deprecated (the exact warnings
@@ -29,11 +31,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
         content.cpp \
         main.cpp \
-        mainwindow.cpp
+        mainwindow.cpp \
+        ../global_util/sessiontype.cpp
 
 HEADERS += \
         content.h \
-        mainwindow.h
+        mainwindow.h \
+        ../global_util/sessiontype.h
 
 isEmpty(PREFIX){
     PREFIX = /usr

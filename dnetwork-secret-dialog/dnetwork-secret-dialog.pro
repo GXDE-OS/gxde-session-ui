@@ -6,14 +6,18 @@ TEMPLATE = app
 DEFINES += QT_DEPRECATED_WARNINGS
 
 CONFIG += c++11 link_pkgconfig
-PKGCONFIG += dtkwidget
+PKGCONFIG += dtkwidget x11
+
+INCLUDEPATH += $$PWD/../global_util
 
 SOURCES += \
         main.cpp \
-    networksecretdialog.cpp
+    networksecretdialog.cpp \
+    ../global_util/sessiontype.cpp
 
 HEADERS += \
-    networksecretdialog.h
+    networksecretdialog.h \
+    ../global_util/sessiontype.h
 
 RESOURCES += \
     resources.qrc

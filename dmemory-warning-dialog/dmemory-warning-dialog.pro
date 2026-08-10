@@ -4,9 +4,12 @@ TARGET = dmemory-warning-dialog
 TEMPLATE = app
 
 CONFIG += c++14 link_pkgconfig
-PKGCONFIG += dtkwidget dframeworkdbus
+PKGCONFIG += dtkwidget dframeworkdbus x11
+
+INCLUDEPATH += $$PWD/../global_util
 
 HEADERS += \
+    ../global_util/sessiontype.h \
     src/buttondelegate.h \
     src/dmemorywarningdialog.h \
     src/processinfodelegate.h \
@@ -16,6 +19,7 @@ HEADERS += \
     src/dmemorywarningdialogadaptor.h
 
 SOURCES += \
+    ../global_util/sessiontype.cpp \
     src/buttondelegate.cpp \
     src/dmemorywarningdialog.cpp \
     src/main.cpp \

@@ -31,6 +31,7 @@
 
 #include "frame.h"
 #include "dialog.h"
+#include "sessiontype.h"
 #include "dbus/dbusupdatejobmanager.h"
 
 DWIDGET_USE_NAMESPACE
@@ -74,7 +75,10 @@ static void UpgradeNotNow() {
 
 int main(int argc, char *argv[])
 {
-    DApplication::loadDXcbPlugin();
+    // dxcb is a X11 only platform plugin.
+    if (!SessionType::isWayland())
+        DApplication::loadDXcbPlugin();
+
     DApplication a(argc, argv);
     a.setOrganizationName("deepin");
     a.setApplicationName("dde-offline-upgrader");
