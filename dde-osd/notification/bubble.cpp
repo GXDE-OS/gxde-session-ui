@@ -34,6 +34,8 @@
 #include <QDBusArgument>
 #include <QMoveEvent>
 #include <QGSettings>
+#include <QGuiApplication>
+#include <QScreen>
 
 #include "notificationentity.h"
 #include "appicon.h"
@@ -208,11 +210,27 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
     x -= Padding;
     y += Padding;
 
-    const QPoint dPos(x - BubbleWidth, y);
+    QPoint dPos(x - BubbleWidth, y);
     const QSize dSize(BubbleWidth, BubbleHeight);
 
     if (!rect.isEmpty())
         m_screenGeometry = rect;
+
+    // Safety net: never let the bubble land outside the screen. Under X11 the
+    // move() below takes effect verbatim and window managers do not constrain
+    // notification-type windows, so a bad coordinate would make the bubble
+    // silently invisible instead of merely misplaced.
+    QRect bounds = m_screenGeometry;
+    if (bounds.isEmpty()) {
+        if (QScreen *screen = QGuiApplication::screenAt(dPos))
+            bounds = screen->geometry();
+        else if (QScreen *screen = QGuiApplication::primaryScreen())
+            bounds = screen->geometry();
+    }
+    if (!bounds.isEmpty()) {
+        dPos.setX(qBound(bounds.left(), dPos.x(), bounds.right() - BubbleWidth));
+        dPos.setY(qBound(bounds.top(), dPos.y(), bounds.bottom() - BubbleHeight));
+    }
 
     resize(dSize);
 

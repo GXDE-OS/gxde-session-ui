@@ -136,6 +136,16 @@ private:
     // or return false.
     QPair<QRect, bool> screensInfo(const QPoint &point) const;
 
+    // The dock exposes its geometry in native (device) pixels, while Qt widget
+    // coordinates are in logical (device-independent) pixels. With a scale
+    // factor other than 1 the two differ, so convert before use.
+    QRect toLogicalGeometry(const QRect &deviceRect) const;
+
+    // Play the notification sound. DDesktopServices::playSystemSoundEffect()
+    // is broken for .wav files in this DTK build (it constructs a QSoundEffect
+    // but never calls play() and leaks the object), so we play directly.
+    void playNotifySound();
+
     void consumeEntities();
 
 private:

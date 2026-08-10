@@ -35,6 +35,12 @@
 #include <QTimer>
 #include <QDebug>
 #include <QXmlStreamReader>
+#include <QGuiApplication>
+#include <QScreen>
+#include <DDesktopServices>
+#include "sessiontype.h"
+
+DWIDGET_USE_NAMESPACE
 
 static QString removeHTML(const QString &source) {
     QXmlStreamReader xml(source);
@@ -143,6 +149,13 @@ uint BubbleManager::Notify(const QString &appName, uint replacesId,
              << "appIcon:" + appIcon << "summary:" + summary << "body:" + body
              << "actions:" << actions << "hints:" << hints << "expireTimeout:" << expireTimeout;
 #endif
+
+    // The generated NotificationsDBusAdaptor used to play this effect, but the
+    // adaptor is never instantiated: registerAsService() exports this object
+    // directly, so Notify() is invoked here instead. Play the effect at the
+    // real entry point, honouring the freedesktop "suppress-sound" hint.
+    if (!hints.value("suppress-sound").toBool())
+        playNotifySound();
 
     NotificationEntity *notification = new NotificationEntity(appName, QString(), appIcon,
                                                               summary, removeHTML(body), actions, hints,
@@ -416,6 +429,37 @@ QPair<QRect, bool> BubbleManager::screensInfo(const QPoint &point) const
     return QPair<QRect, bool>(pointScreen->geometry(), pointScreen == primaryScreen);
 }
 
+void BubbleManager::playNotifySound()
+{
+    // DTK's DDesktopServices::playSystemSoundEffect() is fixed for .wav files
+    // (it now calls QSoundEffect::play() and manages the object lifetime), so
+    // use it directly. It honours the "com.deepin.dde.sound-effect" GSettings
+    // toggle on its own.
+    DDesktopServices::playSystemSoundEffect(DDesktopServices::SSE_Notifications);
+}
+
+QRect BubbleManager::toLogicalGeometry(const QRect &deviceRect) const
+{    if (deviceRect.isEmpty())
+        return deviceRect;
+
+    // Wayland already hands out logical coordinates, no conversion needed.
+    if (SessionType::isWayland())
+        return deviceRect;
+
+    QScreen *screen = QGuiApplication::screenAt(deviceRect.topLeft());
+    if (!screen)
+        screen = QGuiApplication::primaryScreen();
+    if (!screen)
+        return deviceRect;
+
+    const qreal ratio = screen->devicePixelRatio();
+    if (qFuzzyCompare(ratio, 1.0) || ratio <= 0)
+        return deviceRect;
+
+    return QRect(qRound(deviceRect.x() / ratio), qRound(deviceRect.y() / ratio),
+                 qRound(deviceRect.width() / ratio), qRound(deviceRect.height() / ratio));
+}
+
 void BubbleManager::onDockRectChanged(const QRect &geometry)
 {
     // When the gxde dock is available it is the authoritative source for the
@@ -423,7 +467,7 @@ void BubbleManager::onDockRectChanged(const QRect &geometry)
     if (m_dockDeamonInter->isValid())
         return;
 
-    m_dockGeometry = geometry;
+    m_dockGeometry = toLogicalGeometry(geometry);
 
     m_bubble->setBasePosition(getX(), getBottom());
 }
@@ -438,7 +482,7 @@ void BubbleManager::onDockFrontendRectChanged(const QRect &rect)
     // The gxde dock (top.gxde.daemon.dock) exposes its actual visible window
     // rectangle via FrontendWindowRect, which already reflects the hide state.
     // Use it as the dock geometry so notifications can avoid covering it.
-    m_dockGeometry = rect;
+    m_dockGeometry = toLogicalGeometry(rect);
 
     m_bubble->setBasePosition(getX(), getBottom());
 }

@@ -37,8 +37,6 @@
 #include <QtCore/QVariant>
 #include "bubblemanager.h"
 
-#include <DDesktopServices>
-
 DCORE_USE_NAMESPACE
 
 /*
@@ -79,7 +77,8 @@ QString NotificationsDBusAdaptor::GetServerInformation(QString &out1, QString &o
 
 uint NotificationsDBusAdaptor::Notify(const QString &in0, uint in1, const QString &in2, const QString &in3, const QString &in4, const QStringList &in5, const QVariantMap &in6, int in7)
 {
-    DDesktopServices::playSystemSoundEffect(DDesktopServices::SSE_Notifications);
+    // NOTE: the notification sound is played in BubbleManager::Notify(), which
+    // is the method actually exported over D-Bus (this adaptor is not used).
 
     // handle method call org.freedesktop.Notifications.Notify
     uint out0;
@@ -123,7 +122,8 @@ QString DDENotifyDBus::GetServerInformation(QString &out1, QString &out2, QStrin
 
 uint DDENotifyDBus::Notify(const QString &in0, uint in1, const QString &in2, const QString &in3, const QString &in4, const QStringList &in5, const QVariantMap &in6, int in7)
 {
-    DDesktopServices::playSystemSoundEffect(DDesktopServices::SSE_Notifications);
+    // NOTE: the notification sound is played in BubbleManager::Notify(), which
+    // is the method actually exported over D-Bus (this adaptor is not used).
 
     // handle method call org.freedesktop.Notifications.Notify
     uint out0;
