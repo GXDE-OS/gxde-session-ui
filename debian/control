@@ -31,6 +31,7 @@ Build-Depends: debhelper (>= 8.0.0), pkg-config,
  qt6-base-dev,
  cmake,
  qt6-svg-dev,
+ libdframeworkdbus-qt6-dev,
 Standards-Version: 3.9.4
 Homepage: http://www.deepin.org/
 
