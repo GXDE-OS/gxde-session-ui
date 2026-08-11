@@ -33,6 +33,11 @@
 #include <QGSettings>
 #include <DPlatformWindowHandle>
 
+#include <QGuiApplication>
+#include <QWindow>
+
+#include "sessiontype.h"
+
 Container::Container(QWidget *parent)
     : DBlurEffectWidget(parent)
     , m_wmHelper(DWindowManagerHelper::instance())
@@ -81,10 +86,52 @@ void Container::moveToCenter()
         return;
     const QRect primaryRect = primary->geometry();
 
-    // [1] 原本显示在中心下边
-    // move(primaryRect.center() - rect().center());
-    // [2] 修改后显示在中心靠下
-    move(QPoint(primaryRect.center().x(), primaryRect.bottom() - 180) - QPoint(rect().center().x(), rect().bottom()));
+    // 显示在屏幕水平居中、垂直偏下的位置。
+    const QPoint targetPos = QPoint(primaryRect.center().x(), primaryRect.bottom() - 180)
+                             - QPoint(rect().center().x(), rect().bottom());
+
+    // Under Wayland a client cannot position its own toplevel windows via
+    // move(); route the position through the layer-shell protocol instead.
+    if (!updateLayerShellPosition(targetPos))
+        move(targetPos);
+}
+
+bool Container::updateLayerShellPosition(const QPoint &pos)
+{
+    if (!SessionType::isWayland())
+        return false;
+
+    // Make sure the window handle exists, otherwise LayerShellQt::Window::get()
+    // has nothing to attach the layer surface to.
+    createWinId();
+
+    QWindow *win = windowHandle();
+    if (!win)
+        win = window() ? window()->windowHandle() : nullptr;
+    if (!win)
+        return false;
+
+    LayerShellQt::Window *lsWin = LayerShellQt::Window::get(win);
+    if (!lsWin)
+        return false;
+
+    // Anchor to the top-left corner, then use the top/left margins as a plain
+    // x/y offset (in coordinates local to the target screen). This mirrors the
+    // proven approach used by the notification bubbles and dde-launcher.
+    QPoint localPos = pos;
+    const QScreen *screen = win->screen();
+    if (screen)
+        localPos -= screen->geometry().topLeft();
+
+    LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop);
+    anchors |= LayerShellQt::Window::AnchorLeft;
+    lsWin->setAnchors(anchors);
+    lsWin->setExclusiveZone(0);
+    lsWin->setLayer(LayerShellQt::Window::LayerOverlay);
+    lsWin->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
+    lsWin->setMargins(QMargins(localPos.x(), localPos.y(), 0, 0));
+
+    return true;
 }
 
 void Container::showEvent(QShowEvent *event)

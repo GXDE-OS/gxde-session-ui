@@ -29,6 +29,8 @@
 #include <DBlurEffectWidget>
 #include <DWindowManagerHelper>
 
+#include <LayerShellQt/Window>
+
 DWIDGET_USE_NAMESPACE
 
 class QHBoxLayout;
@@ -52,6 +54,12 @@ private slots:
     void onDelayQuit();
 
 private:
+    // Under Wayland a client cannot position its own toplevel windows via
+    // move(); the compositor would place it arbitrarily (usually top-left).
+    // This routes the requested position through the layer-shell protocol
+    // instead. Returns true when the position was applied via layer-shell.
+    bool updateLayerShellPosition(const QPoint &pos);
+
     QHBoxLayout *m_layout;
     DWindowManagerHelper *m_wmHelper;
     QTimer *m_quitTimer;
