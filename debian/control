@@ -29,6 +29,7 @@ Build-Depends: debhelper (>= 8.0.0), pkg-config,
  qt6-tools-dev,
  libdtk2widget6-dev,
  qt6-base-dev,
+ cmake,
 Standards-Version: 3.9.4
 Homepage: http://www.deepin.org/
 
