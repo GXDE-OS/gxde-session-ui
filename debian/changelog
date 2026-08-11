@@ -1,4 +1,4 @@
-gxde-session-ui (5.1.0) UNRELEASED; urgency=medium
+gxde-session-ui (5.1.1) UNRELEASED; urgency=medium
 
   * Change text
   * 消息提示显示至右下角
@@ -13,8 +13,10 @@ gxde-session-ui (5.1.0) UNRELEASED; urgency=medium
   * 使用 cmake 替代 qmake 构建
   * 修复 dde-osd Wayland 下崩溃、半透明异常、位置异常、抢占焦点、图标丢失等问题
   * 迁移 dde-osd 至 Qt6
+  * 迁移 dde-shutdown 至 Qt6
+  * 修复Wayland音频通知窗口位置异常问题
 
- -- gfdgd_xi <3025613752@qq.com>  Mon, 10 Aug 2026 17:52:45 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Tue, 11 Aug 2026 12:18:36 +0800
 
 gxde-session-ui (4.9.14-1+comsta) unstable; urgency=low
 
