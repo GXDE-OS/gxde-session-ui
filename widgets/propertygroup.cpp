@@ -84,7 +84,8 @@ void PropertyGroup::addProperty(const QByteArray &propertyName)
 
     m_signalMapperMap[propertyName] = mapper;
 
-    connect(mapper, static_cast<void (QSignalMapper::*)(QObject *)>(&QSignalMapper::mapped),
+    // Qt6 中 QSignalMapper::mapped(QObject*) 已更名为 mappedObject(QObject*)
+    connect(mapper, &QSignalMapper::mappedObject,
             this, &PropertyGroup::onObjectPropertyChanged);
 }
 

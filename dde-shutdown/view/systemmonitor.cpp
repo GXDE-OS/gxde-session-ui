@@ -47,7 +47,7 @@ SystemMonitor::SystemMonitor(QWidget *parent) : QWidget(parent)
                           "font-weight: 400;");
 
     QHBoxLayout *layout = new QHBoxLayout;
-    layout->setMargin(0);
+    layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->setContentsMargins(30, 0, 30, 0);
 
@@ -65,7 +65,7 @@ void SystemMonitor::setState(SystemMonitor::State state)
     update();
 }
 
-void SystemMonitor::enterEvent(QEvent *event)
+void SystemMonitor::enterEvent(QEnterEvent *event)
 {
     QWidget::enterEvent(event);
 

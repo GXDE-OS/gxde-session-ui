@@ -123,7 +123,7 @@ void ShutdownWidget::initUI()
     m_btnList.append(m_requireHibernateButton);
 
     m_Layout = new QHBoxLayout;
-    m_Layout->setMargin(0);
+    m_Layout->setContentsMargins(0, 0, 0, 0);
     m_Layout->setSpacing(10);
     m_Layout->addStretch(0);
     m_Layout->addWidget(m_requireShutdownButton);

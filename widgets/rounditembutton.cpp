@@ -25,6 +25,7 @@
 
 #include <QtCore/QObject>
 #include <QSvgRenderer>
+#include <QEnterEvent>
 #include "rounditembutton.h"
 
 RoundItemButton::RoundItemButton(QWidget *parent)
@@ -101,7 +102,7 @@ void RoundItemButton::initUI() {
     m_itemText->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->setMargin(0);
+    mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->addSpacing(10);
     mainLayout->addWidget(m_itemIcon);
     mainLayout->setAlignment(m_itemIcon, Qt::AlignHCenter);
@@ -120,7 +121,11 @@ void RoundItemButton::initUI() {
 //    m_itemText->setGraphicsEffect(nameShadow);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+void RoundItemButton::enterEvent(QEnterEvent* event)
+#else
 void RoundItemButton::enterEvent(QEvent* event)
+#endif
 {
     Q_UNUSED(event)
 

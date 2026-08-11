@@ -77,7 +77,11 @@ private slots:
     inline void setState(const State state) {updateState(state);}
 protected:
     void paintEvent(QPaintEvent* event) Q_DECL_OVERRIDE;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    void enterEvent(QEnterEvent* event) Q_DECL_OVERRIDE;
+#else
     void enterEvent(QEvent* event) Q_DECL_OVERRIDE;
+#endif
     void leaveEvent(QEvent* event) Q_DECL_OVERRIDE;
     void mousePressEvent(QMouseEvent* event) Q_DECL_OVERRIDE;
     void mouseReleaseEvent(QMouseEvent* e) Q_DECL_OVERRIDE;

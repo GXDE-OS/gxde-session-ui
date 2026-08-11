@@ -530,7 +530,7 @@ void ContentWidget::initUI() {
 
     QHBoxLayout *buttonLayout = new QHBoxLayout;
     QVBoxLayout *defaultpageLayout = new QVBoxLayout;
-    buttonLayout->setMargin(0);
+    buttonLayout->setContentsMargins(0, 0, 0, 0);
     buttonLayout->setSpacing(10);
     buttonLayout->addStretch();
     buttonLayout->addWidget(m_shutdownButton);
@@ -542,14 +542,14 @@ void ContentWidget::initUI() {
     buttonLayout->addWidget(m_logoutButton);
     buttonLayout->addStretch(0);
 
-    defaultpageLayout->setMargin(0);
+    defaultpageLayout->setContentsMargins(0, 0, 0, 0);
     defaultpageLayout->addSpacerItem(m_buttonSpacer = new QSpacerItem(0, 0));
     defaultpageLayout->addLayout(buttonLayout);
     defaultpageLayout->addStretch();
     m_normalView->setLayout(defaultpageLayout);
 
     m_mainLayout = new QStackedLayout;
-    m_mainLayout->setMargin(0);
+    m_mainLayout->setContentsMargins(0, 0, 0, 0);
     m_mainLayout->setSpacing(0);
     m_mainLayout->addWidget(m_normalView);
 

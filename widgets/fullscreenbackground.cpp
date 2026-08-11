@@ -25,9 +25,9 @@
 
 #include "fullscreenbackground.h"
 
+#include <QEnterEvent>
 #include <QApplication>
 #include <QScreen>
-#include <QDesktopWidget>
 #include <QPainter>
 #include <QDebug>
 #include <QUrl>
@@ -154,7 +154,11 @@ void FullscreenBackground::paintEvent(QPaintEvent *e)
     }
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+void FullscreenBackground::enterEvent(QEnterEvent *event)
+#else
 void FullscreenBackground::enterEvent(QEvent *event)
+#endif
 {
     m_content->show();
     emit contentVisibleChanged(true);
