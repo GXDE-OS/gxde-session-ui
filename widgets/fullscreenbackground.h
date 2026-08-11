@@ -72,6 +72,9 @@ private:
 private:
     void updateScreen(QScreen *screen);
     void updateGeometry();
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    void setupWaylandLayerShell();
+#endif
     using QWidget::setGeometry;
     using QWidget::resize;
     using QWidget::move;

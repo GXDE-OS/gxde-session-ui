@@ -31,6 +31,10 @@
 #include <QDBusAbstractInterface>
 #include <DDBusSender>
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <LayerShellQt/Shell>
+#endif
+
 #include <DLog>
 
 #include "app/shutdownframe.h"
@@ -56,6 +60,13 @@ int main(int argc, char* argv[])
     app.setOrganizationName("deepin");
     app.setApplicationName("dde-shutdown");
     app.setTheme("light");
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    // 在 Wayland 下启用 layer-shell 以便正确顶置全屏窗口；X11 保持原窗口标志逻辑
+    if (QGuiApplication::platformName().contains("wayland", Qt::CaseInsensitive)) {
+        LayerShellQt::Shell::useLayerShell();
+    }
+#endif
 
     DLogManager::registerConsoleAppender();
     DLogManager::registerFileAppender();

@@ -27,6 +27,10 @@
 
 #include <QEnterEvent>
 #include <QApplication>
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#include <LayerShellQt/Window>
+#endif
 #include <QScreen>
 #include <QPainter>
 #include <QDebug>
@@ -209,10 +213,48 @@ void FullscreenBackground::showEvent(QShowEvent *event)
         }
 
         connect(w, &QWindow::screenChanged, this, &FullscreenBackground::updateScreen);
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+        setupWaylandLayerShell();
+#endif
+    }
+
+    // 窗口显示时主动显示内容（图标/按钮），避免 Wayland 下缺少 enterEvent 导致内容不显示
+    if (m_content) {
+        setContentVisible(true);
     }
 
     return QWidget::showEvent(event);
 }
+
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+void FullscreenBackground::setupWaylandLayerShell()
+{
+    // 仅在 Wayland 平台下使用 layer-shell 置顶，X11 保持原窗口标志逻辑
+    if (QGuiApplication::platformName().contains("wayland", Qt::CaseInsensitive)) {
+        QWindow *w = windowHandle();
+        if (!w) {
+            return;
+        }
+
+        LayerShellQt::Window *layerWindow = LayerShellQt::Window::get(w);
+        if (!layerWindow) {
+            return;
+        }
+
+        layerWindow->setLayer(LayerShellQt::Window::LayerOverlay);
+        layerWindow->setAnchors(static_cast<LayerShellQt::Window::Anchors>(
+            LayerShellQt::Window::AnchorTop |
+            LayerShellQt::Window::AnchorBottom |
+            LayerShellQt::Window::AnchorLeft |
+            LayerShellQt::Window::AnchorRight));
+        layerWindow->setExclusiveZone(-1);   // 覆盖全屏，不预留空间
+        layerWindow->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityExclusive);
+        layerWindow->setScope("shutdown-front");
+        layerWindow->setCloseOnDismissed(true);
+    }
+}
+#endif
 
 const QPixmap FullscreenBackground::pixmapHandle(const QPixmap &pixmap)
 {

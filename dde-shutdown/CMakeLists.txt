@@ -28,6 +28,10 @@ find_package(Dtk2widget REQUIRED)
 
 find_package(DFrameworkdbusQt6 REQUIRED)
 
+# Wayland 下使用 layer-shell 置顶全屏窗口（X11 仍走原窗口标志逻辑）
+find_package(LayerShellQt REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS WaylandClient)
+
 # dtk2widget(Qt6 版) 依赖 dtk6core 提供 dtkcore_global.h / DDBusSender 等
 pkg_check_modules(DTK6CORE REQUIRED IMPORTED_TARGET dtk6core)
 
@@ -97,6 +101,8 @@ target_link_libraries(dde-shutdown PRIVATE
     Qt6::Widgets
     Qt6::DBus
     Qt6::Svg
+    Qt6::WaylandClient
+    LayerShellQt::Interface
     ${Dtk2widget_LIBRARIES}
     ${DFrameworkdbusQt6_LIBRARIES}
     PkgConfig::DTK6CORE
