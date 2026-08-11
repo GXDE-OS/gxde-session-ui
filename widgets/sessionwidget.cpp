@@ -149,8 +149,24 @@ const QString SessionWidget::lastSessionName() const
     QSettings setting(DDESESSIONCC::CONFIG_FILE + m_currentUser, QSettings::IniFormat);
     setting.beginGroup("User");
     const QString &session = setting.value("XSession").toString();
+    if (!session.isEmpty())
+        return session;
 
-    return session.isEmpty() ? m_sessionModel->data(m_sessionModel->index(0), QLightDM::SessionsModel::KeyRole).toString() : session;
+    // 配置文件为空时，按优先顺序选择默认会话：deepin → gxde → gxde-wlom
+    const QStringList preferredSessions = {
+        "deepin",
+        "gxde",
+        "gxde-wlom"
+    };
+
+    const int count = m_sessionModel->rowCount(QModelIndex());
+    for (const auto &preferred : preferredSessions)
+        for (int i(0); i != count; ++i)
+            if (m_sessionModel->data(m_sessionModel->index(i), QLightDM::SessionsModel::KeyRole).toString() == preferred)
+                return preferred;
+
+    // 都不存在时，退回列表中的第一个
+    return m_sessionModel->data(m_sessionModel->index(0), QLightDM::SessionsModel::KeyRole).toString();
 }
 
 void SessionWidget::switchToUser(const QString &userName)
