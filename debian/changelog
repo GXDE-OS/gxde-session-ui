@@ -1,4 +1,4 @@
-gxde-session-ui (5.1.2) UNRELEASED; urgency=medium
+gxde-session-ui (5.1.3) UNRELEASED; urgency=medium
 
   * Change text
   * 消息提示显示至右下角
@@ -16,8 +16,9 @@ gxde-session-ui (5.1.2) UNRELEASED; urgency=medium
   * 迁移 dde-shutdown 至 Qt6
   * 修复Wayland音频通知窗口位置异常问题
   * 改进 lightdm-deepin-greeter 默认 session 优先级
+  * 修复 dde-osd 不会自动跟随任务栏变化的问题
 
- -- gfdgd_xi <3025613752@qq.com>  Tue, 11 Aug 2026 15:10:28 +0800
+ -- gfdgd_xi <3025613752@qq.com>  Wed, 12 Aug 2026 17:06:00 +0800
 
 gxde-session-ui (4.9.14-1+comsta) unstable; urgency=low
 

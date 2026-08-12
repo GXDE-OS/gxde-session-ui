@@ -84,11 +84,16 @@ BubbleManager::BubbleManager(QObject *parent)
     connect(m_dbusDaemonInterface, SIGNAL(NameOwnerChanged(QString, QString, QString)),
             this, SLOT(onDbusNameOwnerChanged(QString, QString, QString)));
     connect(m_dbusdockinterface, &DBusDockInterface::geometryChanged, this, &BubbleManager::onDockRectChanged);
-    // The gxde dock does not emit typed property-change signals; watch the
-    // generic PropertiesChanged instead (covers both FrontendWindowRect and
-    // Position).
-    connect(m_dockDeamonInter, SIGNAL(PropertiesChanged(QString, QVariantMap, QStringList)),
-            this, SLOT(onDockPropertiesChanged(QString, QVariantMap, QStringList)));
+
+    // The gxde dock (top.gxde.daemon.dock) does not expose typed property-change
+    // signals on its generated proxy, and Qt6's QDBusAbstractInterface does not
+    // relay org.freedesktop.DBus.Properties.PropertiesChanged into a proxy signal.
+    // Connect to the raw D-Bus PropertiesChanged signal of the gxde dock so the
+    // notification window actually reacts to taskbar size/position changes.
+    QDBusConnection::sessionBus().connect(
+        DockDaemonDBusServie, DockDaemonDBusPath,
+        "org.freedesktop.DBus.Properties", "PropertiesChanged",
+        this, SLOT(onDockPropertiesChanged(QString, QVariantMap, QStringList)));
     connect(m_dbusControlCenter, &DBusControlCenter::destRectChanged, this, &BubbleManager::onCCDestRectChanged);
     connect(m_dbusControlCenter, &DBusControlCenter::rectChanged, this, &BubbleManager::onCCRectChanged);
 
@@ -342,11 +347,18 @@ int BubbleManager::getX()
     if (!isCCDbusValid && !isDockDbusValid)
         return maxX;
 
-    // Detect a right dock from the geometry: it is a narrow vertical bar not at
-    // the left edge of the screen.
-    bool dockAtRight = isDockDbusValid && !m_dockGeometry.isEmpty()
-                      && m_dockGeometry.height() >= m_dockGeometry.width()
-                      && m_dockGeometry.x() > 0;
+    // Derive the dock side from its actual window geometry so this works for
+    // both the deepin dock and the gxde dock (their position enums differ). A
+    // dock is "on a side" when it is a tall, narrow vertical bar.
+    const bool dockValid = isDockDbusValid && !m_dockGeometry.isEmpty();
+    const bool dockAtRight = dockValid
+                             && m_dockGeometry.height() >= m_dockGeometry.width()
+                             && m_dockGeometry.x() > rect.x();
+    const bool dockAtLeft = dockValid
+                            && m_dockGeometry.height() >= m_dockGeometry.width()
+                            && m_dockGeometry.right() < rect.right();
+
+    // A right-hand dock occupies the right edge: keep the bubble to its left.
     if (dockAtRight) {
         // check dde-control-center is valid
         if (isCCDbusValid) {
@@ -363,10 +375,18 @@ int BubbleManager::getX()
         // dde-control-center is invalid, return dock' x
         return maxX - m_dockGeometry.width();
     }
-    //  dock position is not right, and dde-control-center is valid
-    if (isCCDbusValid) {
+
+    // A left-hand dock, a top/bottom dock, or no dock does not affect the
+    // right-aligned bubble horizontally. Only avoid an open control-center that
+    // slides in from the right (a non-empty rect whose left edge is on-screen
+    // and to the right of the dock/primary origin). When the control-center is
+    // not actually open its rect is empty/at the origin, so fall back to the
+    // screen's right edge instead of pinning the bubble to the left (which was
+    // the previous behaviour and produced a wrong bottom-left placement).
+    if (isCCDbusValid && !m_ccGeometry.isEmpty()
+            && m_ccGeometry.x() > rect.x() && m_ccGeometry.x() < rect.right()
+            && (!dockAtLeft || m_ccGeometry.x() > m_dockGeometry.right()))
         return m_ccGeometry.x();
-    }
 
     return maxX;
 }
