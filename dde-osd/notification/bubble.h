@@ -72,6 +72,8 @@ public Q_SLOTS:
 
 protected:
     void mousePressEvent(QMouseEvent *) Q_DECL_OVERRIDE;
+    void enterEvent(QEnterEvent *event) Q_DECL_OVERRIDE;
+    void leaveEvent(QEvent *event) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *event) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *event) Q_DECL_OVERRIDE;
 
@@ -87,7 +89,6 @@ private:
     void updateContent();
     void processActions();
     void processIconData();
-    bool containsMouse() const;
 
     void saveImg(const QImage &image);
     const QPixmap converToPixmap(const QDBusArgument &value);
@@ -114,6 +115,12 @@ private:
     QString m_defaultAction;
 
     bool m_offScreen = true;
+    // Whether the mouse pointer is currently hovering over the bubble window.
+    // Tracked through enter/leave events instead of QCursor::pos(), which is
+    // unreliable under Wayland (it only returns the position of the last mouse
+    // event the application received, so it can stay "inside" the bubble
+    // forever and the bubble would never time out).
+    bool m_mouseInside = false;
 };
 
 #endif // BUBBLE_H

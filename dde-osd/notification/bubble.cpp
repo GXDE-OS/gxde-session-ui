@@ -271,6 +271,20 @@ void Bubble::mousePressEvent(QMouseEvent *)
     m_outTimer->stop();
 }
 
+void Bubble::enterEvent(QEnterEvent *event)
+{
+    DBlurEffectWidget::enterEvent(event);
+
+    m_mouseInside = true;
+}
+
+void Bubble::leaveEvent(QEvent *event)
+{
+    DBlurEffectWidget::leaveEvent(event);
+
+    m_mouseInside = false;
+}
+
 void Bubble::showEvent(QShowEvent *event)
 {
     DBlurEffectWidget::showEvent(event);
@@ -285,6 +299,10 @@ void Bubble::hideEvent(QHideEvent *event)
     m_outAnimation->stop();
 
     m_quitTimer->start();
+
+    // The pointer may still be over the (now hidden) window; make sure the
+    // stale hover state does not leak into the next shown notification.
+    m_mouseInside = false;
 }
 
 void Bubble::onActionButtonClicked(const QString &actionId)
@@ -309,7 +327,13 @@ void Bubble::onActionButtonClicked(const QString &actionId)
 
 void Bubble::onOutTimerTimeout()
 {
-    if (containsMouse()) {
+    // Hovering the bubble pauses the auto-hide countdown. The hover state is
+    // tracked with enter/leave events (m_mouseInside) instead of
+    // QCursor::pos(), because under Wayland QCursor::pos() only returns the
+    // position of the last mouse event the application received: once the
+    // pointer has left the bubble that position stays stale, containsMouse()
+    // would keep returning true and the notification would never disappear.
+    if (m_mouseInside) {
         m_outTimer->stop();
         m_outTimer->start();
     } else {
@@ -369,13 +393,6 @@ void Bubble::initTimers()
     m_outTimer->setInterval(5000);
     m_outTimer->setSingleShot(true);
     connect(m_outTimer, &QTimer::timeout, this, &Bubble::onOutTimerTimeout);
-}
-
-bool Bubble::containsMouse() const
-{
-    QRect rectToGlobal = QRect(mapToGlobal(rect().topLeft()),
-                               mapToGlobal(rect().bottomRight()));
-    return rectToGlobal.contains(QCursor::pos());
 }
 
 // Each even element in the list (starting at index 0) represents the identifier for the action.
