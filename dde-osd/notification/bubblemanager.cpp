@@ -94,13 +94,15 @@ BubbleManager::BubbleManager(QObject *parent)
         DockDaemonDBusServie, DockDaemonDBusPath,
         "org.freedesktop.DBus.Properties", "PropertiesChanged",
         this, SLOT(onDockPropertiesChanged(QString, QVariantMap, QStringList)));
-    connect(m_dbusControlCenter, &DBusControlCenter::destRectChanged, this, &BubbleManager::onCCDestRectChanged);
-    connect(m_dbusControlCenter, &DBusControlCenter::rectChanged, this, &BubbleManager::onCCRectChanged);
+    connect(m_dbusControlCenter, &DBusControlCenter::destRectChanged,
+            this, &BubbleManager::onCCDestRectChanged);
+    connect(m_dbusControlCenter, &DBusControlCenter::rectChanged,
+            this, &BubbleManager::onCCRectChanged);
 
     // get correct value for m_dockGeometry, m_dockPosition, m_ccGeometry
     // NOTE: com.deepin.dde.daemon.Dock is broken under Wayland, so its geometry
     // is ignored here; the gxde dock is the authoritative source.
-    if (m_dbusControlCenter->isValid())
+    if (!SessionType::isWayland() && m_dbusControlCenter->isValid())
         onCCRectChanged(m_dbusControlCenter->rect());
 
     // The gxde dock (top.gxde.daemon.dock) is the authoritative source for the
@@ -253,6 +255,28 @@ void BubbleManager::registerAsService()
 
 void BubbleManager::onCCDestRectChanged(const QRect &destRect)
 {
+    if (SessionType::isWayland()) {
+        QScreen *primaryScreen = QGuiApplication::primaryScreen();
+        const QRect screenRect = primaryScreen ? primaryScreen->geometry() : QRect();
+        const int screenEnd = screenRect.right() + 1;
+
+        if (destRect.x() < screenEnd && destRect.width() > 0) {
+            // An explicitly on-screen destination means the panel is opening.
+            m_controlCenterClosing = false;
+            m_controlCenterVisible = true;
+            m_ccGeometry = destRect;
+        } else if (m_controlCenterVisible || destRect.x() > screenEnd) {
+            m_controlCenterClosing = true;
+            m_controlCenterVisible = false;
+            m_ccGeometry = QRect();
+        } else if (destRect.x() == screenEnd) {
+            m_controlCenterClosing = false;
+        }
+
+        m_bubble->setBasePosition(getX(), getBottom());
+        return;
+    }
+
     // get the current rect of control-center
     m_ccGeometry = m_dbusControlCenter->rect();
     // use the current rect of control-center to setup position of bubble
@@ -276,6 +300,27 @@ void BubbleManager::onCCDestRectChanged(const QRect &destRect)
 
 void BubbleManager::onCCRectChanged(const QRect &rect)
 {
+    if (SessionType::isWayland()) {
+        QScreen *primaryScreen = QGuiApplication::primaryScreen();
+        const QRect screenRect = primaryScreen ? primaryScreen->geometry() : QRect();
+        const int screenEnd = screenRect.right() + 1;
+
+        if (!m_controlCenterClosing
+                && m_lastControlCenterX != std::numeric_limits<int>::max()
+                && rect.x() < m_lastControlCenterX
+                && rect.x() < screenEnd && rect.width() > 0) {
+            // The panel is sliding in from the right.  Reserve its fully-open
+            // width immediately so a notification never sits underneath it.
+            m_controlCenterVisible = true;
+            m_ccGeometry = QRect(screenEnd - rect.width(), screenRect.y(),
+                rect.width(), rect.height());
+            m_bubble->setBasePosition(getX(), getBottom());
+        }
+
+        m_lastControlCenterX = rect.x();
+        return;
+    }
+
     m_ccGeometry = rect;
     // do NOT call setBasePosition here
 }
@@ -341,7 +386,7 @@ int BubbleManager::getX()
         return  maxX;
 
     if (SessionType::isWayland()) {
-        if (m_dbusControlCenter->isValid() && !m_ccGeometry.isEmpty()
+        if (m_controlCenterVisible && !m_ccGeometry.isEmpty()
                 && m_ccGeometry.x() > rect.x() && m_ccGeometry.x() < rect.right())
             return m_ccGeometry.x();
         return maxX;
@@ -532,7 +577,8 @@ void BubbleManager::onDockPropertiesChanged(const QString &interface, const QVar
 void BubbleManager::onDbusNameOwnerChanged(QString name, QString, QString newName)
 {
     if (name == ControlCenterDBusService && screensInfo(m_bubble->pos()).second && !newName.isEmpty()) {
-        onCCRectChanged(m_dbusControlCenter->rect());
+        if (!SessionType::isWayland())
+            onCCRectChanged(m_dbusControlCenter->rect());
     } else if (name == DBbsDockDBusServer && !newName.isEmpty() && !m_dockDeamonInter->isValid()) {
         onDockRectChanged(m_dbusdockinterface->geometry());
     } else if (name == DockDaemonDBusServie && !newName.isEmpty()) {

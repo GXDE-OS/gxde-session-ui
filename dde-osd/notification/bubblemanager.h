@@ -30,6 +30,7 @@
 #include <QScreen>
 #include <QApplication>
 #include <QGuiApplication>
+#include <limits>
 #include "bubble.h"
 #include "dbusdock_interface.h"
 #include "generated/gxde_dock.h"
@@ -162,6 +163,9 @@ private:
 
     QRect m_ccGeometry;
     QRect m_dockGeometry;
+    bool m_controlCenterVisible = false;
+    bool m_controlCenterClosing = false;
+    int m_lastControlCenterX = std::numeric_limits<int>::max();
 
     DockPosition m_dockPosition;
 };
