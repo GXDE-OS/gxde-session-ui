@@ -7,6 +7,7 @@ find_package(DFrameworkdbusQt6 REQUIRED)
 # Used to place the notification bubbles under Wayland, where a client is not
 # allowed to position its own toplevel windows via move().
 find_package(LayerShellQt REQUIRED)
+find_package(KF6WindowSystem REQUIRED)
 
 # dtk2widget is the Qt6 build of the DtkWidget 5.x API (DWIDGET_NAMESPACE = Dtk::Widget).
 # It must NOT be replaced by dtk6widget, whose API differs significantly.
@@ -111,6 +112,7 @@ target_link_libraries(dde-osd PRIVATE
     Qt6::Sql
     DFrameworkdbusQt6::DFrameworkdbusQt6
     LayerShellQt::Interface
+    KF6::WindowSystem
     PkgConfig::OSD
 )
 

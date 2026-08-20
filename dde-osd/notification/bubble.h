@@ -41,6 +41,7 @@ class NotificationEntity;
 class ActionButton;
 class AppBody;
 class QGraphicsDropShadowEffect;
+class QGraphicsOpacityEffect;
 
 static const int Padding = 20;
 static const int BubbleWidth = 300;
@@ -52,6 +53,7 @@ static const QString CachePath = Directory.first() + "/.cache/deepin/deepin-noti
 class Bubble : public DBlurEffectWidget
 {
     Q_OBJECT
+    Q_PROPERTY(int waylandEnterOffset READ waylandEnterOffset WRITE setWaylandEnterOffset)
 public:
     Bubble(NotificationEntity *entity=0);
 
@@ -74,6 +76,8 @@ protected:
     void mousePressEvent(QMouseEvent *) Q_DECL_OVERRIDE;
     void enterEvent(QEnterEvent *event) Q_DECL_OVERRIDE;
     void leaveEvent(QEvent *event) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *event) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *event) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *event) Q_DECL_OVERRIDE;
 
@@ -96,6 +100,10 @@ private:
     // Positions the bubble through the layer-shell protocol. Returns false when
     // not running under Wayland, so the caller can fall back to move().
     bool updateLayerShellPosition(const QPoint &pos);
+    void updateWaylandBlurRegion();
+    QRect panelRect() const;
+    int waylandEnterOffset() const;
+    void setWaylandEnterOffset(int offset);
 
 private:
     NotificationEntity *m_entity;
@@ -106,13 +114,18 @@ private:
 
     QPropertyAnimation *m_outAnimation = nullptr;
     QPropertyAnimation *m_moveAnimation = nullptr;
+    QParallelAnimationGroup *m_enterAnimation = nullptr;
+    QGraphicsOpacityEffect *m_opacityEffect = nullptr;
     QTimer *m_outTimer = nullptr;
     QTimer *m_quitTimer;
     DPlatformWindowHandle *m_handle;
     DWindowManagerHelper *m_wmHelper;
 
     QRect m_screenGeometry;
+    QPoint m_layerPosition;
+    QMargins m_effectMargins;
     QString m_defaultAction;
+    int m_waylandEnterOffset = 0;
 
     bool m_offScreen = true;
     // Whether the mouse pointer is currently hovering over the bubble window.
