@@ -675,8 +675,12 @@ void Bubble::onDelayQuit()
 void Bubble::resetMoveAnim(const QRect &rect)
 {
     if (isVisible() && m_outAnimation->state() != QPropertyAnimation::Running) {
+        // m_layerPosition is maintained by the layer-shell path only. On X11
+        // updateLayerShellPosition() returns before assigning it, so using it
+        // here would animate the bubble to the default (0, 0) position.
+        const int currentY = SessionType::isWayland() ? m_layerPosition.y() : y();
         const QPoint endPoint = QPoint(rect.x() - Padding - BubbleWidth - m_effectMargins.left(),
-            m_layerPosition.y());
+            currentY);
 
         const QRect startRect(endPoint, size());
         m_outAnimation->setStartValue(startRect);

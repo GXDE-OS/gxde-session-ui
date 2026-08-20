@@ -476,11 +476,18 @@ int BubbleManager::getBottom()
 
     const bool dockAvailable = m_dbusdockinterface->isValid() || m_dockDeamonInter->isValid();
 
-    // Detect a bottom dock from the geometry: it spans the full screen width and
-    // sits at the bottom edge.
-    bool dockAtBottom = dockAvailable && !m_dockGeometry.isEmpty()
-                        && m_dockGeometry.width() >= m_dockGeometry.height()
-                        && m_dockGeometry.y() > 0;
+    // A horizontal panel is not necessarily a bottom dock. In particular, an
+    // X11 screen may have a non-zero global origin, making a top panel's y
+    // coordinate positive. Only reserve space for a panel which the dock
+    // service identifies as Bottom and which actually touches this screen's
+    // bottom edge.
+    const bool dockAtBottom = dockAvailable
+                              && m_dockPosition == DockPosition::Bottom
+                              && !m_dockGeometry.isEmpty()
+                              && m_dockGeometry.width() >= m_dockGeometry.height()
+                              && m_dockGeometry.right() >= rect.left()
+                              && m_dockGeometry.left() <= rect.right()
+                              && qAbs(m_dockGeometry.bottom() - rect.bottom()) <= 1;
 
     if (!pair.second || !dockAtBottom)
         goto rect_bottom_of_bubble_top;
@@ -514,14 +521,23 @@ void BubbleManager::playNotifySound()
 }
 
 QRect BubbleManager::toLogicalGeometry(const QRect &deviceRect) const
-{    if (deviceRect.isEmpty())
+{
+    if (deviceRect.isEmpty())
         return deviceRect;
 
     // Wayland already hands out logical coordinates, no conversion needed.
     if (SessionType::isWayland())
         return deviceRect;
 
-    QScreen *screen = QGuiApplication::screenAt(deviceRect.topLeft());
+    QScreen *screen = nullptr;
+    for (QScreen *candidate : QGuiApplication::screens()) {
+        QRect rawGeometry(candidate->geometry().topLeft(),
+                          candidate->geometry().size() * candidate->devicePixelRatio());
+        if (rawGeometry.contains(deviceRect.topLeft())) {
+            screen = candidate;
+            break;
+        }
+    }
     if (!screen)
         screen = QGuiApplication::primaryScreen();
     if (!screen)
@@ -531,8 +547,12 @@ QRect BubbleManager::toLogicalGeometry(const QRect &deviceRect) const
     if (qFuzzyCompare(ratio, 1.0) || ratio <= 0)
         return deviceRect;
 
-    return QRect(qRound(deviceRect.x() / ratio), qRound(deviceRect.y() / ratio),
-                 qRound(deviceRect.width() / ratio), qRound(deviceRect.height() / ratio));
+    const QPoint origin = screen->geometry().topLeft();
+    const QPoint logicalTopLeft = origin
+                                  + (deviceRect.topLeft() - origin) / ratio;
+    return QRect(logicalTopLeft,
+                 QSize(qRound(deviceRect.width() / ratio),
+                       qRound(deviceRect.height() / ratio)));
 }
 
 void BubbleManager::onDockRectChanged(const QRect &geometry)
@@ -567,11 +587,13 @@ void BubbleManager::onDockPropertiesChanged(const QString &interface, const QVar
     Q_UNUSED(interface);
 
     // The gxde dock does not emit a typed FrontendWindowRectChanged signal; react
-    // to the generic property change notification instead.
-    if (changed.contains("FrontendWindowRect") || invalidated.contains("FrontendWindowRect"))
-        onDockFrontendRectChanged(m_dockDeamonInter->frontendWindowRect());
+    // to the generic property change notification instead. Process Position
+    // first: the rectangle and side are often emitted together, and positioning
+    // from the old side briefly puts a top panel notification at the screen top.
     if (changed.contains("Position") || invalidated.contains("Position"))
         onDockPositionChanged(m_dockDeamonInter->position());
+    if (changed.contains("FrontendWindowRect") || invalidated.contains("FrontendWindowRect"))
+        onDockFrontendRectChanged(m_dockDeamonInter->frontendWindowRect());
 }
 
 void BubbleManager::onDbusNameOwnerChanged(QString name, QString, QString newName)
