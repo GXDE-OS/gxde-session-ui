@@ -36,6 +36,12 @@
 #include <QGSettings>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QPainterPath>
+#include <QPainter>
+#include <QResizeEvent>
+#include <QParallelAnimationGroup>
+#include <QGraphicsOpacityEffect>
+#include <KWindowEffects>
 
 #include "notificationentity.h"
 #include "appicon.h"
@@ -105,6 +111,7 @@ Bubble::Bubble(NotificationEntity *entity)
     , m_body(new AppBody(this))
     , m_actionButton(new ActionButton(this))
     , m_quitTimer(new QTimer(this))
+    , m_effectMargins(SessionType::isWayland() ? QMargins(14, 14, 14, 18) : QMargins())
 
 {
     m_quitTimer->setInterval(60 * 1000);
@@ -112,6 +119,12 @@ Bubble::Bubble(NotificationEntity *entity)
 
     setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
     setAttribute(Qt::WA_TranslucentBackground);
+
+    if (SessionType::isWayland()) {
+        m_opacityEffect = new QGraphicsOpacityEffect(this);
+        m_opacityEffect->setOpacity(1.0);
+        setGraphicsEffect(m_opacityEffect);
+    }
 
     m_wmHelper = DWindowManagerHelper::instance();
 
@@ -134,11 +147,13 @@ Bubble::Bubble(NotificationEntity *entity)
     connect(m_wmHelper, &DWindowManagerHelper::hasCompositeChanged, this, &Bubble::compositeChanged);
     connect(m_quitTimer, &QTimer::timeout, this, &Bubble::onDelayQuit);
 
-    QTimer::singleShot(0, this, [=] {
-        // FIXME: 锁屏不允许显示任何通知，而通知又需要禁止窗管进行管理，
-        // 为了避免二者的冲突，将气泡修改为dock，保持在其他程序置顶，又不会显示在锁屏之上。
-        register_wm_state(winId());
-    });
+    if (!SessionType::isWayland()) {
+        QTimer::singleShot(0, this, [=] {
+            // FIXME: 锁屏不允许显示任何通知，而通知又需要禁止窗管进行管理，
+            // 为了避免二者的冲突，将气泡修改为dock，保持在其他程序置顶，又不会显示在锁屏之上。
+            register_wm_state(winId());
+        });
+    }
 }
 
 NotificationEntity *Bubble::entity() const
@@ -156,7 +171,17 @@ void Bubble::setEntity(NotificationEntity *entity)
 
     updateContent();
 
+    const bool entering = SessionType::isWayland() && !isVisible();
+    if (entering) {
+        m_enterAnimation->stop();
+        m_opacityEffect->setOpacity(0.0);
+        setWaylandEnterOffset(-12);
+    }
+
     show();
+
+    if (entering)
+        m_enterAnimation->start();
 
     m_outTimer->start();
 }
@@ -181,26 +206,31 @@ bool Bubble::updateLayerShellPosition(const QPoint &pos)
     if (!lsWin)
         return false;
 
-    // Layer-shell margins are relative to the anchored edges of the output. We
-    // follow dde-launcher's proven approach: anchor to the top-left corner, then
-    // use the top/left margins as a plain x/y offset to the bubble's top-left.
-    // The position supplied by BubbleManager is in global desktop coordinates, so
-    // translate it into coordinates local to the target screen.
-    QPoint localPos = pos;
-    const QScreen *screen = win->screen();
-    if (!m_screenGeometry.isEmpty())
-        localPos -= m_screenGeometry.topLeft();
-    else if (screen)
-        localPos -= screen->geometry().topLeft();
+    m_layerPosition = pos;
 
-    LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorTop);
-    anchors |= LayerShellQt::Window::AnchorLeft;
+    QRect outputGeometry = m_screenGeometry;
+    if (outputGeometry.isEmpty()) {
+        if (const QScreen *screen = win->screen())
+            outputGeometry = screen->geometry();
+    }
+
+    int rightMargin = Padding;
+    int bottomMargin = Padding;
+    if (!outputGeometry.isEmpty()) {
+        rightMargin = outputGeometry.right() + 1 - (pos.x() + width());
+        bottomMargin = outputGeometry.bottom() + 1 - (pos.y() + height());
+    }
+
+    rightMargin += m_waylandEnterOffset;
+
+    LayerShellQt::Window::Anchors anchors(LayerShellQt::Window::AnchorBottom);
+    anchors |= LayerShellQt::Window::AnchorRight;
     lsWin->setAnchors(anchors);
     lsWin->setExclusiveZone(0);
     // Notifications must stay above regular windows but below the lock screen.
     lsWin->setLayer(LayerShellQt::Window::LayerTop);
     lsWin->setKeyboardInteractivity(LayerShellQt::Window::KeyboardInteractivityNone);
-    lsWin->setMargins(QMargins(localPos.x(), localPos.y(), 0, 0));
+    lsWin->setMargins(QMargins(0, 0, qMax(0, rightMargin), qMax(0, bottomMargin)));
 
     return true;
 }
@@ -210,8 +240,8 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
     x -= Padding;
     y += Padding;
 
-    QPoint dPos(x - BubbleWidth, y);
-    const QSize dSize(BubbleWidth, BubbleHeight);
+    QPoint contentPos(x - BubbleWidth, y);
+    const QSize contentSize(BubbleWidth, BubbleHeight);
 
     if (!rect.isEmpty())
         m_screenGeometry = rect;
@@ -222,16 +252,19 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
     // silently invisible instead of merely misplaced.
     QRect bounds = m_screenGeometry;
     if (bounds.isEmpty()) {
-        if (QScreen *screen = QGuiApplication::screenAt(dPos))
+        if (QScreen *screen = QGuiApplication::screenAt(contentPos))
             bounds = screen->geometry();
         else if (QScreen *screen = QGuiApplication::primaryScreen())
             bounds = screen->geometry();
     }
     if (!bounds.isEmpty()) {
-        dPos.setX(qBound(bounds.left(), dPos.x(), bounds.right() - BubbleWidth));
-        dPos.setY(qBound(bounds.top(), dPos.y(), bounds.bottom() - BubbleHeight));
+        contentPos.setX(qBound(bounds.left(), contentPos.x(), bounds.right() - BubbleWidth));
+        contentPos.setY(qBound(bounds.top(), contentPos.y(), bounds.bottom() - BubbleHeight));
     }
 
+    const QPoint dPos = contentPos - QPoint(m_effectMargins.left(), m_effectMargins.top());
+    const QSize dSize = contentSize + QSize(m_effectMargins.left() + m_effectMargins.right(),
+                                            m_effectMargins.top() + m_effectMargins.bottom());
     resize(dSize);
 
     // Under Wayland a client cannot position its own toplevel, move() is a
@@ -250,12 +283,16 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
 
 void Bubble::compositeChanged()
 {
-    if (!m_wmHelper->hasComposite()) {
+    const bool wayland = SessionType::isWayland();
+    if (!wayland && !m_wmHelper->hasComposite()) {
         m_handle->setWindowRadius(0);
         m_handle->setShadowColor(QColor("#E5E5E5"));
     } else {
-        m_handle->setWindowRadius(5);
+        const int radius = wayland ? 8 : 5;
+        m_handle->setWindowRadius(radius);
         m_handle->setShadowColor(QColor(0, 0, 0, 100));
+        setBlurRectXRadius(radius);
+        setBlurRectYRadius(radius);
     }
 }
 
@@ -285,11 +322,77 @@ void Bubble::leaveEvent(QEvent *event)
     m_mouseInside = false;
 }
 
+QRect Bubble::panelRect() const
+{
+    return rect().marginsRemoved(m_effectMargins);
+}
+
+void Bubble::paintEvent(QPaintEvent *event)
+{
+    if (SessionType::isWayland()) {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.setPen(Qt::NoPen);
+
+        const QRectF body(panelRect());
+        if (!body.isValid()) {
+            DBlurEffectWidget::paintEvent(event);
+            return;
+        }
+        for (int spread = 12; spread >= 1; --spread) {
+            const qreal strength = qreal(13 - spread) / 12.0;
+            painter.setBrush(QColor(0, 0, 0, qRound(2 + 5 * strength)));
+            painter.drawRoundedRect(body.adjusted(-spread, -spread + 2,
+                                                  spread, spread + 2),
+                                    8 + spread, 8 + spread);
+        }
+    }
+
+    DBlurEffectWidget::paintEvent(event);
+}
+
+void Bubble::resizeEvent(QResizeEvent *event)
+{
+    DBlurEffectWidget::resizeEvent(event);
+    updateWaylandBlurRegion();
+}
+
 void Bubble::showEvent(QShowEvent *event)
 {
     DBlurEffectWidget::showEvent(event);
 
     m_quitTimer->start();
+    updateWaylandBlurRegion();
+}
+
+void Bubble::updateWaylandBlurRegion()
+{
+    if (!SessionType::isWayland() || !isVisible() || !windowHandle())
+        return;
+
+    // DTK enables blur for the complete rectangular surface. Restrict it to
+    // the notification's rounded body so the corner/shadow area stays clear.
+    QPainterPath path;
+    const QRect body = panelRect();
+    if (!body.isValid())
+        return;
+
+    path.addRoundedRect(QRectF(body), blurRectXRadius(), blurRectYRadius());
+    setMaskPath(path);
+    const QRegion bubbleRegion(path.toFillPolygon().toPolygon());
+    KWindowEffects::enableBlurBehind(windowHandle(), true, bubbleRegion);
+}
+
+int Bubble::waylandEnterOffset() const
+{
+    return m_waylandEnterOffset;
+}
+
+void Bubble::setWaylandEnterOffset(int offset)
+{
+    m_waylandEnterOffset = offset;
+    if (SessionType::isWayland() && !m_layerPosition.isNull())
+        updateLayerShellPosition(m_layerPosition);
 }
 
 void Bubble::hideEvent(QHideEvent *event)
@@ -360,15 +463,18 @@ void Bubble::updateContent()
 
 void Bubble::initUI()
 {
-    resize(BubbleWidth, BubbleHeight);
+    resize(QSize(BubbleWidth, BubbleHeight)
+           + QSize(m_effectMargins.left() + m_effectMargins.right(),
+                   m_effectMargins.top() + m_effectMargins.bottom()));
 
     m_icon->setFixedSize(48, 48);
-    m_icon->move(11, 11);
+    m_icon->move(m_effectMargins.left() + 11, m_effectMargins.top() + 11);
 
     m_body->setObjectName("Body");
-    m_body->move(70, 0);
+    m_body->move(m_effectMargins.left() + 70, m_effectMargins.top());
 
-    m_actionButton->move(BubbleWidth - m_actionButton->width(), 0);
+    m_actionButton->move(m_effectMargins.left() + BubbleWidth - m_actionButton->width(),
+                         m_effectMargins.top());
 
     setStyleSheet(BubbleStyleSheet);
 
@@ -385,6 +491,22 @@ void Bubble::initAnimations()
 
     m_moveAnimation = new QPropertyAnimation(this, "pos", this);
     m_moveAnimation->setEasingCurve(QEasingCurve::OutCubic);
+
+    if (SessionType::isWayland()) {
+        m_enterAnimation = new QParallelAnimationGroup(this);
+
+        auto *opacity = new QPropertyAnimation(m_opacityEffect, "opacity", m_enterAnimation);
+        opacity->setDuration(180);
+        opacity->setStartValue(0.0);
+        opacity->setEndValue(1.0);
+        opacity->setEasingCurve(QEasingCurve::OutCubic);
+
+        auto *slide = new QPropertyAnimation(this, "waylandEnterOffset", m_enterAnimation);
+        slide->setDuration(180);
+        slide->setStartValue(-12);
+        slide->setEndValue(0);
+        slide->setEasingCurve(QEasingCurve::OutCubic);
+    }
 }
 
 void Bubble::initTimers()
@@ -553,11 +675,12 @@ void Bubble::onDelayQuit()
 void Bubble::resetMoveAnim(const QRect &rect)
 {
     if (isVisible() && m_outAnimation->state() != QPropertyAnimation::Running) {
-        const QPoint &endPoint = QPoint(rect.x() - Padding - BubbleWidth, y());
+        const QPoint endPoint = QPoint(rect.x() - Padding - BubbleWidth - m_effectMargins.left(),
+            m_layerPosition.y());
 
-        const QRect &startRect = QRect(endPoint, QSize(BubbleWidth, BubbleHeight));
+        const QRect startRect(endPoint, size());
         m_outAnimation->setStartValue(startRect);
-        m_outAnimation->setEndValue(QRect(startRect.right(), startRect.y(), 0, BubbleHeight));
+        m_outAnimation->setEndValue(QRect(startRect.right(), startRect.y(), 0, height()));
 
         // Animating the "pos" property has no effect on Wayland, jump straight
         // to the final position through the layer surface margins instead.

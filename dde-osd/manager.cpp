@@ -136,7 +136,7 @@ void Manager::ShowOSD(const QString &osd)
         }
 
         if (m_currentProvider->checkConditions()) {
-            m_container->show();
+            m_container->showAnimated();
             m_timer->start();
         } else {
             doneSetting();
@@ -153,8 +153,8 @@ void Manager::updateUI()
 
     m_delegate->setProvider(m_currentProvider);
     m_listview->setFlow(m_currentProvider->flow());
-    m_container->setContentsMargins(m_currentProvider->contentMargins());
-    m_container->setFixedSize(m_currentProvider->contentSize());
+    m_container->setContentMargins(m_currentProvider->contentMargins());
+    m_container->setContentSize(m_currentProvider->contentSize());
     m_container->moveToCenter();
 }
 
@@ -164,7 +164,7 @@ void Manager::doneSetting()
         return m_timer->start();
     }
 
-    m_container->hide();
+    m_container->hideAnimated();
     if (m_currentProvider) {
         m_currentProvider->sync();
         m_currentProvider = nullptr;

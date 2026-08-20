@@ -1,3 +1,9 @@
+gxde-session-ui (5.1.5) UNRELEASED; urgency=medium
+
+  * 修复Wayland下OSD与通知位置异常、模糊缺失、动画消失的问题
+
+ -- CharOfString <root@charofstring.cc>  Thu, 20 Aug 2026 17:38:12 +0800
+
 gxde-session-ui (5.1.4) UNRELEASED; urgency=medium
 
   * Change text

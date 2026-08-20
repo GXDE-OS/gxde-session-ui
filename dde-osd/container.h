@@ -31,19 +31,30 @@
 
 #include <LayerShellQt/Window>
 
+#include <QMargins>
+
 DWIDGET_USE_NAMESPACE
 
 class QHBoxLayout;
+class QParallelAnimationGroup;
+class QGraphicsOpacityEffect;
 class Container : public DBlurEffectWidget
 {
     Q_OBJECT
+    Q_PROPERTY(int waylandAnimationOffset READ waylandAnimationOffset WRITE setWaylandAnimationOffset)
 public:
     explicit Container(QWidget *parent = 0);
 
     void setContent(QWidget *content);
+    void setContentMargins(const QMargins &margins);
+    void setContentSize(const QSize &size);
     void moveToCenter();
+    void showAnimated();
+    void hideAnimated();
 
 protected:
+    void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;
+    void resizeEvent(QResizeEvent *event) Q_DECL_OVERRIDE;
     void showEvent(QShowEvent *event) Q_DECL_OVERRIDE;
     void hideEvent(QHideEvent *event) Q_DECL_OVERRIDE;
 
@@ -55,14 +66,22 @@ private slots:
 
 private:
     // Under Wayland a client cannot position its own toplevel windows via
-    // move(); the compositor would place it arbitrarily (usually top-left).
-    // This routes the requested position through the layer-shell protocol
-    // instead. Returns true when the position was applied via layer-shell.
-    bool updateLayerShellPosition(const QPoint &pos);
+    // move(); configure the requested placement through layer-shell instead.
+    bool updateLayerShellPosition();
+    void updateWaylandMask();
+    void startWaylandAnimation(bool showing);
+    int waylandAnimationOffset() const;
+    void setWaylandAnimationOffset(int offset);
 
     QHBoxLayout *m_layout;
     DWindowManagerHelper *m_wmHelper;
     QTimer *m_quitTimer;
+    QParallelAnimationGroup *m_animation;
+    QGraphicsOpacityEffect *m_opacityEffect;
+    QMargins m_effectMargins;
+    int m_waylandAnimationOffset = 0;
+    int m_waylandBottomMargin = 180;
+    bool m_hideAfterAnimation = false;
     bool m_supportComposite;
 };
 

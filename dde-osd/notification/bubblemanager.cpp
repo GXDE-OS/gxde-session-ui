@@ -340,6 +340,13 @@ int BubbleManager::getX()
     if (!pair.second)
         return  maxX;
 
+    if (SessionType::isWayland()) {
+        if (m_dbusControlCenter->isValid() && !m_ccGeometry.isEmpty()
+                && m_ccGeometry.x() > rect.x() && m_ccGeometry.x() < rect.right())
+            return m_ccGeometry.x();
+        return maxX;
+    }
+
     const bool isCCDbusValid = m_dbusControlCenter->isValid();
     const bool isDockDbusValid = m_dbusdockinterface->isValid() || m_dockDeamonInter->isValid();
 
@@ -418,6 +425,9 @@ int BubbleManager::getBottom()
     const QRect &rect = pair.first;
 
     const int bottom_default_padding = BubbleHeight + Padding + Padding;
+
+    if (SessionType::isWayland())
+        return rect.y() + rect.height() - bottom_default_padding;
 
     const bool dockAvailable = m_dbusdockinterface->isValid() || m_dockDeamonInter->isValid();
 
@@ -550,6 +560,9 @@ void BubbleManager::consumeEntities()
         targetScreen = QGuiApplication::primaryScreen();
 
     const QRect screenGeometry = targetScreen ? targetScreen->geometry() : QRect();
+
+    if (SessionType::isWayland() && targetScreen)
+        m_bubble->setScreen(targetScreen);
 
     m_bubble->setBasePosition(getX(), getBottom(), screenGeometry);
     m_bubble->setEntity(m_currentNotify);
