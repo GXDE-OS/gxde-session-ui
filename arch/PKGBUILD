@@ -1,0 +1,59 @@
+# Maintainer: CharOfString <root@charofstring.cc>
+pkgname=gxde-session-ui-git
+pkgver=5.1.6
+pkgrel=1
+pkgdesc='GXDE session UI (greeter, lock screen, shutdown, OSD and dialogs)'
+arch=('x86_64' 'aarch64')
+url="https://github.com/GXDE-OS/gxde-session-ui"
+license=('GPL-3.0-or-later')
+# x11-xserver-utils 中实际用到的是 xrandr 和 xrdb；dbus-x11 的 dbus-launch 在 Arch 的 dbus 中
+# Of x11-xserver-utils only xrandr and xrdb are used; dbus-x11's dbus-launch
+# is part of Arch's dbus.
+depends=('gxde-desktop-schemas-git' 'deepin-daemon-git' 'xorg-xrandr' 'xorg-xrdb' 'dbus' 'hicolor-icon-theme'
+         'gxde-qt5integration-git'
+         'dtkwidget2-git' 'dtkcore-git' 'deepin-qt-dbus-factory-git' 'gsettings-qt5' 'liblightdm-qt5'
+         'qt5-base' 'qt5-svg' 'qt5-x11extras'
+         'dtk2widget-qt6-git' 'dtk6core-git' 'dframework-dbus-qt6-git' 'gsettings-qt6' 'kwindowsystem'
+         'layer-shell-qt' 'qt6-base' 'qt6-svg' 'qt6-wayland'
+         'glib2' 'systemd-libs' 'libx11' 'libxext' 'libxfixes' 'libxcursor' 'libxrandr' 'libxi' 'libxtst'
+         'libgcc' 'libstdc++' 'glibc')
+optdepends=('onboard: on-screen keyboard on the lock screen and greeter')
+makedepends=('git' 'cmake' 'ninja' 'qt5-tools' 'qt6-tools' 'dtkwidget2-dev-git' 'deepin-gettext-tools')
+provides=('gxde-session-ui' 'deepin-session-ui' 'lightdm-greeter')
+conflicts=('gxde-session-ui' 'deepin-session-ui')
+source=()
+sha512sums=()
+
+# 直接使用 PKGBUILD 所在的 git 仓库作为源码 ・ Build from the git checkout this PKGBUILD lives in.
+_srcroot() {
+  git -C "$startdir" rev-parse --show-toplevel
+}
+
+build() {
+  # Qt5 部分使用 <QGSettings/QGSettings>，但 Arch 的 gsettings-qt.pc 只给出 .../qt5/QGSettings，
+  # 这里补上其父目录。只通过 CMAKE_CXX_FLAGS 传给顶层工程，Qt6 的 dde-shutdown 子工程
+  # （ExternalProject）不受影响，避免误用 Qt5 版的同名头文件
+  # The Qt5 parts include <QGSettings/QGSettings> while Arch's gsettings-qt.pc
+  # only points at .../qt5/QGSettings, add its parent.  It is passed only via
+  # CMAKE_CXX_FLAGS of the top-level project, so the Qt6 dde-shutdown
+  # ExternalProject does not pick up the Qt5 header of the same name.
+  local _gsettings_inc
+  _gsettings_inc=$(dirname "$(pkg-config --variable=includedir gsettings-qt)")
+  cmake -B build -S "$(_srcroot)" -GNinja \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_CXX_FLAGS="$CXXFLAGS -I$_gsettings_inc"
+  ninja -C build
+}
+
+package() {
+  DESTDIR="$pkgdir" ninja -C build install
+
+  # Arch 上 /etc 留给管理员，systemd 的厂商 drop-in 放在 /usr/lib
+  # On Arch /etc belongs to the administrator; vendor systemd drop-ins live in /usr/lib.
+  if [[ -d $pkgdir/etc/systemd/system ]]; then
+    install -d "$pkgdir/usr/lib/systemd"
+    mv "$pkgdir/etc/systemd/system" "$pkgdir/usr/lib/systemd/"
+    rmdir "$pkgdir/etc/systemd"
+  fi
+}
