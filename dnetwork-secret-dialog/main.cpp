@@ -30,8 +30,22 @@
 #include <QCommandLineOption>
 #include <QCommandLineParser>
 
+#include <cstdio>
+#include <unistd.h>
+
 DCORE_USE_NAMESPACE
 DWIDGET_USE_NAMESPACE
+
+// 本程序是一次性的密码输入工具，stdout 是向 secret agent 返回结果的数据通道。
+// dtkwidget 的静态对象在进程退出阶段析构时会破坏堆（glibc 报
+// "corrupted size vs. prev_size while consolidating"），导致密码已经写出后
+// 进程仍以 SIGABRT (core dumped) 结束，父进程会误判为获取密码失败、WiFi
+// 连接随即以 no-secrets 失败。结果写出后直接结束进程，跳过静态析构。
+[[noreturn]] static void finish(int code)
+{
+    std::fflush(nullptr);
+    ::_exit(code);
+}
 
 int main(int argc, char *argv[])
 {
@@ -39,6 +53,9 @@ int main(int argc, char *argv[])
     if (!SessionType::isWayland())
         DApplication::loadDXcbPlugin();
 
+    // translator 必须比 app 更早构造，析构时才会晚于 app，避免
+    // QCoreApplication 清理 translators 时访问已销毁的对象。
+    QTranslator translator;
     DApplication app(argc, argv);
     app.setOrganizationName("deepin");
     app.setApplicationName("dnetwork-secret-dialog");
@@ -48,7 +65,6 @@ int main(int argc, char *argv[])
     DLogManager::registerConsoleAppender();
     DLogManager::registerFileAppender();
 
-    QTranslator translator;
     translator.load("/usr/share/gxde-session-ui/translations/gxde-session-ui_" + QLocale::system().name());
     app.installTranslator(&translator);
 
@@ -67,20 +83,20 @@ int main(int argc, char *argv[])
         qDebug() << "read json data from STDIN";
         if (!file.open(stdin, QFile::ReadOnly)) {
             qDebug() << "read from STDIN failed";
-            return -2;
+            finish(-2);
         }
     } else {
         file.setFileName(posArguments.first());
         if (!file.open(QFile::ReadOnly)) {
             qDebug() << "file:" << file.fileName()<< "open failed";
-            return -1;
+            finish(-1);
         }
     }
 
     jsonDoc = QJsonDocument::fromJson(file.readAll());
     if (jsonDoc.isEmpty()) {
         qDebug() << "invalid json data.";
-        return -3;
+        finish(-3);
     }
 
     file.close();
@@ -88,5 +104,6 @@ int main(int argc, char *argv[])
     NetworkSecretDialog dialog(jsonDoc);
     dialog.show();
 
-    return app.exec();
+    const int ret = app.exec();
+    finish(ret);
 }

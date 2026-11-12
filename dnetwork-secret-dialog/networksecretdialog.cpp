@@ -156,10 +156,15 @@ void NetworkSecretDialog::submit()
         if (!file.open(stdout, QFile::WriteOnly)) {
             qDebug() << "open STDOUT failed";
             qApp->exit(-4);
+            return;
         }
         file.write(QJsonDocument(resultJsonObj).toJson());
         file.flush();
         file.close();
+
+        // 结果已经写出，立即结束事件循环，不要依赖窗口关闭或
+        // quitOnLastWindowClosed 的行为，否则父进程可能一直等不到退出。
+        qApp->exit(0);
     } else {
         qDebug() << "some input is invalid!";
     }
