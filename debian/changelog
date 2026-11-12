@@ -1,8 +1,12 @@
-gxde-session-ui (5.1.6) UNRELEASED; urgency=medium
+gxde-session-ui (5.1.7) UNRELEASED; urgency=medium
 
+  [ CharOfString ]
   * 修复Wayland下通知在控制中心关闭的情况下依旧有大margin的问题
 
- -- CharOfString <root@charofstring.cc>  Thu, 20 Aug 2026 21:21:00 +0800
+  [ gfdgd_xi ]
+  * fix: 修复WIFI密码输入框概率崩溃的问题
+
+ -- gfdgd_xi <3025613752@qq.com>  Thu, 12 Nov 2026 09:30:12 +0800
 
 gxde-session-ui (5.1.5) UNRELEASED; urgency=medium
 
