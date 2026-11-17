@@ -1,5 +1,5 @@
 # Maintainer: CharOfString <root@charofstring.cc>
-pkgname=gxde-session-ui-git
+pkgname=gxde-session-ui
 pkgver=5.1.7
 pkgrel=1
 pkgdesc='GXDE session UI (greeter, lock screen, shutdown, OSD and dialogs)'
@@ -9,18 +9,19 @@ license=('GPL-3.0-or-later')
 # x11-xserver-utils 中实际用到的是 xrandr 和 xrdb；dbus-x11 的 dbus-launch 在 Arch 的 dbus 中
 # Of x11-xserver-utils only xrandr and xrdb are used; dbus-x11's dbus-launch
 # is part of Arch's dbus.
-depends=('gxde-desktop-schemas-git' 'deepin-daemon-git' 'xorg-xrandr' 'xorg-xrdb' 'dbus' 'hicolor-icon-theme'
-         'gxde-qt5integration-git'
-         'dtkwidget2-git' 'dtkcore-git' 'deepin-qt-dbus-factory-git' 'gsettings-qt5' 'liblightdm-qt5'
+depends=('gxde-desktop-schemas' 'gxde-deepin-daemon' 'xorg-xrandr' 'xorg-xrdb' 'dbus' 'hicolor-icon-theme'
+         'gxde-qt5integration'
+         'dtkwidget2' 'gxde-dtkcore' 'gxde-deepin-qt-dbus-factory' 'gsettings-qt5' 'liblightdm-qt5'
          'qt5-base' 'qt5-svg' 'qt5-x11extras'
-         'dtk2widget-qt6-git' 'dtk6core-git' 'dframework-dbus-qt6-git' 'gsettings-qt6' 'kwindowsystem'
+         'dtk2widget-qt6' 'gxde-dtk6core' 'dframework-dbus-qt6' 'gsettings-qt6' 'kwindowsystem'
          'layer-shell-qt' 'qt6-base' 'qt6-svg' 'qt6-wayland'
          'glib2' 'systemd-libs' 'libx11' 'libxext' 'libxfixes' 'libxcursor' 'libxrandr' 'libxi' 'libxtst'
          'libgcc' 'libstdc++' 'glibc')
 optdepends=('onboard: on-screen keyboard on the lock screen and greeter')
-makedepends=('git' 'cmake' 'ninja' 'qt5-tools' 'qt6-tools' 'dtkwidget2-dev-git' 'deepin-gettext-tools')
-provides=('gxde-session-ui' 'deepin-session-ui' 'lightdm-greeter')
-conflicts=('gxde-session-ui' 'deepin-session-ui')
+makedepends=('git' 'cmake' 'ninja' 'qt5-tools' 'qt6-tools' 'dtkwidget2-dev' 'deepin-gettext-tools')
+provides=('deepin-session-ui' 'lightdm-greeter' "gxde-session-ui-git=$pkgver")
+conflicts=('deepin-session-ui' 'gxde-session-ui-git')
+replaces=('gxde-session-ui-git')
 source=()
 sha512sums=()
 
