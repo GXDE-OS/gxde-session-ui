@@ -23,12 +23,10 @@
 #ifndef BUBBLE_H
 #define BUBBLE_H
 
-#include <QFrame>
+#include <QWidget>
 #include <DBlurEffectWidget>
 #include <QStandardPaths>
 #include <QDir>
-#include <DPlatformWindowHandle>
-#include <DWindowManagerHelper>
 #include <QDBusArgument>
 
 DWIDGET_USE_NAMESPACE
@@ -50,7 +48,7 @@ static const int BubbleHeight = 70;
 static const QStringList Directory = QStandardPaths::standardLocations(QStandardPaths::HomeLocation);
 static const QString CachePath = Directory.first() + "/.cache/deepin/deepin-notifications/";
 
-class Bubble : public DBlurEffectWidget
+class Bubble : public QWidget
 {
     Q_OBJECT
     Q_PROPERTY(int waylandEnterOffset READ waylandEnterOffset WRITE setWaylandEnterOffset)
@@ -68,7 +66,6 @@ Q_SIGNALS:
     void actionInvoked(uint, QString);
 
 public Q_SLOTS:
-    void compositeChanged();
     void onDelayQuit();
     void resetMoveAnim(const QRect &rect);
 
@@ -101,6 +98,7 @@ private:
     // not running under Wayland, so the caller can fall back to move().
     bool updateLayerShellPosition(const QPoint &pos);
     void updateWaylandBlurRegion();
+    void updateX11WindowMask();
     QRect panelRect() const;
     int waylandEnterOffset() const;
     void setWaylandEnterOffset(int offset);
@@ -118,8 +116,7 @@ private:
     QGraphicsOpacityEffect *m_opacityEffect = nullptr;
     QTimer *m_outTimer = nullptr;
     QTimer *m_quitTimer;
-    DPlatformWindowHandle *m_handle;
-    DWindowManagerHelper *m_wmHelper;
+    DBlurEffectWidget *m_waylandBlur = nullptr;
 
     QRect m_screenGeometry;
     QPoint m_layerPosition;

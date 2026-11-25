@@ -42,6 +42,7 @@
 #include <QParallelAnimationGroup>
 #include <QGraphicsOpacityEffect>
 #include <KWindowEffects>
+#include <DWindowManagerHelper>
 
 #include "notificationentity.h"
 #include "appicon.h"
@@ -105,7 +106,7 @@ void register_wm_state(WId winid) {
 }
 
 Bubble::Bubble(NotificationEntity *entity)
-    : DBlurEffectWidget(nullptr)
+    : QWidget(nullptr)
     , m_entity(entity)
     , m_icon(new AppIcon(this))
     , m_body(new AppBody(this))
@@ -117,26 +118,25 @@ Bubble::Bubble(NotificationEntity *entity)
     m_quitTimer->setInterval(60 * 1000);
     m_quitTimer->setSingleShot(true);
 
-    setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);
-    setAttribute(Qt::WA_TranslucentBackground);
+    Qt::WindowFlags flags = Qt::FramelessWindowHint | Qt::Tool;
+    if (!SessionType::isWayland())
+        flags |= Qt::WindowStaysOnTopHint;
+    setWindowFlags(flags);
 
     if (SessionType::isWayland()) {
+        setAttribute(Qt::WA_TranslucentBackground);
+        m_waylandBlur = new DBlurEffectWidget(this);
+        m_waylandBlur->setAttribute(Qt::WA_TransparentForMouseEvents);
+        m_waylandBlur->setBlendMode(DBlurEffectWidget::BehindWindowBlend);
+        m_waylandBlur->setMaskColor(DBlurEffectWidget::LightColor);
+        m_waylandBlur->setBlurRectXRadius(8);
+        m_waylandBlur->setBlurRectYRadius(8);
+        m_waylandBlur->lower();
+
         m_opacityEffect = new QGraphicsOpacityEffect(this);
         m_opacityEffect->setOpacity(1.0);
         setGraphicsEffect(m_opacityEffect);
     }
-
-    m_wmHelper = DWindowManagerHelper::instance();
-
-    m_handle = new DPlatformWindowHandle(this);
-    m_handle->setTranslucentBackground(true);
-    m_handle->setShadowRadius(14);
-    m_handle->setShadowOffset(QPoint(0, 4));
-
-    compositeChanged();
-
-    setBlendMode(DBlurEffectWidget::BehindWindowBlend);
-    setMaskColor(DBlurEffectWidget::LightColor);
 
     initUI();
     initAnimations();
@@ -144,10 +144,11 @@ Bubble::Bubble(NotificationEntity *entity)
 
     setEntity(entity);
 
-    connect(m_wmHelper, &DWindowManagerHelper::hasCompositeChanged, this, &Bubble::compositeChanged);
     connect(m_quitTimer, &QTimer::timeout, this, &Bubble::onDelayQuit);
 
     if (!SessionType::isWayland()) {
+        connect(DWindowManagerHelper::instance(), &DWindowManagerHelper::hasCompositeChanged,
+                this, &Bubble::updateX11WindowMask);
         QTimer::singleShot(0, this, [=] {
             // FIXME: 锁屏不允许显示任何通知，而通知又需要禁止窗管进行管理，
             // 为了避免二者的冲突，将气泡修改为dock，保持在其他程序置顶，又不会显示在锁屏之上。
@@ -281,18 +282,14 @@ void Bubble::setBasePosition(int x, int y, QRect rect)
     }
 }
 
-void Bubble::compositeChanged()
+void Bubble::updateX11WindowMask()
 {
-    const bool wayland = SessionType::isWayland();
-    if (!wayland && !m_wmHelper->hasComposite()) {
-        m_handle->setWindowRadius(0);
-        m_handle->setShadowColor(QColor("#E5E5E5"));
+    if (DWindowManagerHelper::instance()->hasComposite()) {
+        QPainterPath path;
+        path.addRoundedRect(QRectF(rect()), 5, 5);
+        setMask(QRegion(path.toFillPolygon().toPolygon()));
     } else {
-        const int radius = wayland ? 8 : 5;
-        m_handle->setWindowRadius(radius);
-        m_handle->setShadowColor(QColor(0, 0, 0, 100));
-        setBlurRectXRadius(radius);
-        setBlurRectYRadius(radius);
+        clearMask();
     }
 }
 
@@ -310,14 +307,14 @@ void Bubble::mousePressEvent(QMouseEvent *)
 
 void Bubble::enterEvent(QEnterEvent *event)
 {
-    DBlurEffectWidget::enterEvent(event);
+    QWidget::enterEvent(event);
 
     m_mouseInside = true;
 }
 
 void Bubble::leaveEvent(QEvent *event)
 {
-    DBlurEffectWidget::leaveEvent(event);
+    QWidget::leaveEvent(event);
 
     m_mouseInside = false;
 }
@@ -329,16 +326,15 @@ QRect Bubble::panelRect() const
 
 void Bubble::paintEvent(QPaintEvent *event)
 {
-    if (SessionType::isWayland()) {
+    Q_UNUSED(event)
+    if (m_waylandBlur) {
         QPainter painter(this);
         painter.setRenderHint(QPainter::Antialiasing);
         painter.setPen(Qt::NoPen);
 
         const QRectF body(panelRect());
-        if (!body.isValid()) {
-            DBlurEffectWidget::paintEvent(event);
+        if (!body.isValid())
             return;
-        }
         for (int spread = 12; spread >= 1; --spread) {
             const qreal strength = qreal(13 - spread) / 12.0;
             painter.setBrush(QColor(0, 0, 0, qRound(2 + 5 * strength)));
@@ -346,20 +342,26 @@ void Bubble::paintEvent(QPaintEvent *event)
                                                   spread, spread + 2),
                                     8 + spread, 8 + spread);
         }
+    } else {
+        QPainter painter(this);
+        painter.fillRect(rect(), QColor("#FCFCFC"));
     }
-
-    DBlurEffectWidget::paintEvent(event);
 }
 
 void Bubble::resizeEvent(QResizeEvent *event)
 {
-    DBlurEffectWidget::resizeEvent(event);
-    updateWaylandBlurRegion();
+    QWidget::resizeEvent(event);
+    if (m_waylandBlur) {
+        m_waylandBlur->setGeometry(panelRect());
+        updateWaylandBlurRegion();
+    } else {
+        updateX11WindowMask();
+    }
 }
 
 void Bubble::showEvent(QShowEvent *event)
 {
-    DBlurEffectWidget::showEvent(event);
+    QWidget::showEvent(event);
 
     m_quitTimer->start();
     updateWaylandBlurRegion();
@@ -377,8 +379,7 @@ void Bubble::updateWaylandBlurRegion()
     if (!body.isValid())
         return;
 
-    path.addRoundedRect(QRectF(body), blurRectXRadius(), blurRectYRadius());
-    setMaskPath(path);
+    path.addRoundedRect(QRectF(body), 8, 8);
     const QRegion bubbleRegion(path.toFillPolygon().toPolygon());
     KWindowEffects::enableBlurBehind(windowHandle(), true, bubbleRegion);
 }
@@ -397,7 +398,7 @@ void Bubble::setWaylandEnterOffset(int offset)
 
 void Bubble::hideEvent(QHideEvent *event)
 {
-    DBlurEffectWidget::hideEvent(event);
+    QWidget::hideEvent(event);
 
     m_outAnimation->stop();
 
