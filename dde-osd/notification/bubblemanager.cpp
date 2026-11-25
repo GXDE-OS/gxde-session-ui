@@ -24,6 +24,7 @@
 #include <QStringList>
 #include <QVariantMap>
 #include <QTimer>
+#include <QPointer>
 #include "bubble.h"
 #include "dbuscontrol.h"
 #include "dbus_daemon_interface.h"
@@ -157,12 +158,19 @@ uint BubbleManager::Notify(const QString &appName, uint replacesId,
              << "actions:" << actions << "hints:" << hints << "expireTimeout:" << expireTimeout;
 #endif
 
+    // Notify() is a synchronous D-Bus method: the sender (e.g. the screenshot
+    // tool) blocks until we return. Senders often do this from their GUI thread
+    // while owning the X11 clipboard, so any delay here also stalls clipboard
+    // requests from other applications. Only the work needed to compute the
+    // return value is done inline; playing the sound and showing the bubble are
+    // deferred until after the reply has been sent.
+    //
     // The generated NotificationsDBusAdaptor used to play this effect, but the
     // adaptor is never instantiated: registerAsService() exports this object
     // directly, so Notify() is invoked here instead. Play the effect at the
     // real entry point, honouring the freedesktop "suppress-sound" hint.
     if (!hints.value("suppress-sound").toBool())
-        playNotifySound();
+        QTimer::singleShot(0, this, &BubbleManager::playNotifySound);
 
     NotificationEntity *notification = new NotificationEntity(appName, QString(), appIcon,
                                                               summary, removeHTML(body), actions, hints,
@@ -173,17 +181,25 @@ uint BubbleManager::Notify(const QString &appName, uint replacesId,
 
     if (!m_currentNotify.isNull() && replacesId != 0 && (m_currentNotify->id() == replacesId
                                                          || m_currentNotify->replacesId() == QString::number(replacesId))) {
-        m_bubble->setEntity(notification);
-
         m_currentNotify->deleteLater();
         m_currentNotify = notification;
+
+        QPointer<NotificationEntity> replacement(notification);
+        QTimer::singleShot(0, this, [this, replacement] {
+            // Skip if it was itself replaced or dismissed in the meantime.
+            if (replacement && m_currentNotify == replacement)
+                m_bubble->setEntity(replacement);
+        });
     } else {
         m_entities.enqueue(notification);
     }
 
     m_persistence->addOne(notification);
 
-    if (!m_bubble->isVisible()) { consumeEntities(); }
+    QTimer::singleShot(0, this, [this] {
+        if (!m_bubble->isVisible())
+            consumeEntities();
+    });
 
     // If replaces_id is 0, the return value is a UINT32 that represent the notification.
     // If replaces_id is not 0, the returned value is the same value as replaces_id.

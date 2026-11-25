@@ -92,18 +92,18 @@ void Persistence::addOne(NotificationEntity *entity)
 #endif
     }
 
-    // to get entity's id in database
-    if (!m_query.exec(QString("SELECT last_insert_rowid() FROM %1;").arg(TableName_v2))) {
+    const QVariant rowId = m_query.lastInsertId();
+    m_query.finish();
+    if (!rowId.isValid()) {
         qWarning() << "get entity's id failed: " << m_query.lastError().text() << entity->id() << entity->ctime();
         return;
-    } else {
-        m_query.next();
-        entity->setId(m_query.value(0).toString());
-#ifdef QT_DEBUG
-        qDebug() << "get entity's id done:" << entity->id();
-#endif
-        emit RecordAdded(entity);
     }
+
+    entity->setId(rowId.toString());
+#ifdef QT_DEBUG
+    qDebug() << "get entity's id done:" << entity->id();
+#endif
+    emit RecordAdded(entity);
 }
 
 void Persistence::addAll(QList<NotificationEntity *> entities)
@@ -240,6 +240,7 @@ QString Persistence::getFrom(int rowCount, const QString &offsetId)
 
     m_query.next();
     QString rowNum = m_query.value(0).toString();
+    m_query.finish();
     if (rowNum.isEmpty()) {
         qWarning() << "the line number is invalid: ";
         return QString();
