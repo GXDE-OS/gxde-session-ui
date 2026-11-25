@@ -1,3 +1,10 @@
+gxde-session-ui (5.1.8) UNRELEASED; urgency=medium
+
+  * 修复X11下通知条没有颜色、露出后方背景的问题
+  * 修复通知处理有时会卡顿的问题
+
+ -- CharOfString <root@charofstring.cc>  Wed, 25 Nov 2026 05:01:11 -0600
+
 gxde-session-ui (5.1.7) UNRELEASED; urgency=medium
 
   [ CharOfString ]

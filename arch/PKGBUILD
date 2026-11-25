@@ -1,6 +1,6 @@
 # Maintainer: CharOfString <root@charofstring.cc>
 pkgname=gxde-session-ui
-pkgver=5.1.7
+pkgver=5.1.8
 pkgrel=1
 pkgdesc='GXDE session UI (greeter, lock screen, shutdown, OSD and dialogs)'
 arch=('x86_64' 'aarch64')
